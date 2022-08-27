@@ -51,14 +51,13 @@ router.post('/registerWithImage',
                 type: "failure",
                 result: "Email already exist"
             });
-
             const salt = await bcrypt.genSalt(10);
             const hashedpassword = await bcrypt.hash(req.body.password, salt);
             const user = new User({
                 name: req.body.name,
                 email: req.body.email,
                 password: hashedpassword,
-                profile: req.file.filename
+                profile: req.file.path
             })
             const save = await user.save();
             if (save) {
@@ -128,7 +127,6 @@ router.put('/updateStatus', async (req, res, next) => {
 });
 router.delete('/delete', async (req, res, next) => {
     try {
-        console.log(req.body);
         const _id = req.body.id
         const user = await User.deleteOne({ _id });
         !user && res.json({ type: "failure", result: "No user found" });
@@ -157,7 +155,10 @@ router.put('/follow', async (req, res, next) => {
                     result: "No user found"
                 });
 
-            if (!usertofollowid.friends.includes(req.body.id)) {
+            if (
+                !(usertofollowid.friends.includes(req.body.id)) &&
+                !(usertofollowid.addfriendReq.includes(req.body.id))
+            ) {
                 await usertofollowid.updateOne({
                     $push: { addfriendReq: req.body.id }
                 })
@@ -169,7 +170,12 @@ router.put('/follow', async (req, res, next) => {
                 })
             }
             else res.json({
-                type: "failure", result: `You are already friend with this account`
+                type: "failure", result:
+                    (usertofollowid.friends.includes(req.body.id))
+                        ? `You are already friend with this account`
+                        : `Request already sent to this account this account`
+
+
             });
         }
         catch (e) {
@@ -180,6 +186,45 @@ router.put('/follow', async (req, res, next) => {
     }
     else res.json({
         type: "failure", result: `You can't follow your self`
+    });
+});
+
+// follow
+router.put('/unfollow', async (req, res, next) => {
+    if (req.body.id !== req.body.unfollowid) {
+        try {
+            const unfollowid = await User.findById(req.body.unfollowid);
+            const currentUser = await User.findById(req.body.id);
+            if (!unfollowid)
+                res.json({
+                    type: "failure",
+                    result: "No user found"
+                });
+            if (unfollowid.addfriendReq.includes(req.body.id)) {
+
+                await unfollowid.updateOne({
+                    $pull: { addfriendReq: req.body.id }
+                })
+                await currentUser.updateOne({
+                    $pull: { pendingReq: req.body.unfollowid }
+                })
+                res.json({
+                    type: "success", result: `Request Cancelled`
+                })
+            }
+            else res.json({
+                type: "failure", result: `You haven't send request to this account`
+            });
+        }
+        catch (e) {
+
+            res.json({
+                type: "failure", result: `Can't Find the user or can't unfollow the user or user not found`
+            });
+        }
+    }
+    else res.json({
+        type: "failure", result: `Server Error`
     });
 });
 

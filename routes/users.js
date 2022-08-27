@@ -97,19 +97,28 @@ router.post('/signin', async (req, res, next) => {
 });
 router.post('/getSingleUser', async (req, res, next) => {
     try {
-        const _id = mongoose.Types.ObjectId(req.body.id)
-        const current = req.body.currnent
+        const _id = req.body.id
+        var button = ""
+        const current = req.body.current
         const user = await User.findById(_id)
-        !user && res.json({ type: "failure", result: "No user found" });
-
-        user.friends.includes(current) && res.json({ button: "Remove" })
-        user.addfriendReq.includes(current) && res.json({ button: "Cancel" })
+        if (!user) {
+            return res.json({ type: "failure", result: "No user found" });
+        }
+        if (user.friends.includes(current)) {
+            button = "Remove"
+        }
+        else if (user.addfriendReq.includes(current)) {
+            button = "Cancel"
+        }
+        else {
+            button = "Add"
+        }
 
         const { password, ...rest } = user._doc
-        res.json({ type: "success", result: { ...rest, button: "Add" } })
+        res.json({ type: "success", result: { ...rest }, button })
     }
     catch (e) {
-        console.log("error", e);
+        console.log("error occured in getuser");
         res.json({ type: "failure", result: "No user found" });
     }
 });
@@ -194,9 +203,9 @@ router.put('/follow', async (req, res, next) => {
 
 // unfollow
 router.put('/unfollow', async (req, res, next) => {
-    if (req.body.id !== req.body.unfollowid) {
+    if (req.body.id !== req.body.usertounfollowid) {
         try {
-            const unfollowid = await User.findById(req.body.unfollowid);
+            const unfollowid = await User.findById(req.body.usertounfollowid);
             const currentUser = await User.findById(req.body.id);
             if (!unfollowid)
                 res.json({
@@ -209,7 +218,7 @@ router.put('/unfollow', async (req, res, next) => {
                     $pull: { addfriendReq: req.body.id }
                 })
                 await currentUser.updateOne({
-                    $pull: { pendingReq: req.body.unfollowid }
+                    $pull: { pendingReq: req.body.usertounfollowid }
                 })
                 res.json({
                     type: "success", result: `Request Cancelled`
@@ -232,10 +241,10 @@ router.put('/unfollow', async (req, res, next) => {
 });
 
 // removefriend
-router.put('/removefriend', async (req, res, next) => {
-    if (req.body.id !== req.body.unfollowid) {
+router.delete('/removefriend', async (req, res, next) => {
+    if (req.body.id !== req.body.removeId) {
         try {
-            const removeid = await User.findById(req.body.unfollowid);
+            const removeid = await User.findById(req.body.removeId);
             const currentUser = await User.findById(req.body.id);
             if (!removeid)
                 res.json({

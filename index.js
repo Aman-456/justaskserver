@@ -29,12 +29,12 @@ const io = new Server({
     }
 });
 
-io.on("connection", (socket) => {
-    console.log("socket connected");
-    io.emit("firstEvent", "Hello this is test")
-    socket.on("disconnect", () => {
-        console.log("someone left");
-    })
-});
+// io.on("connection", (socket) => {
+//     console.log("socket connected");
+//     io.emit("firstEvent", "Hello this is test")
+//     socket.on("disconnect", () => {
+//         console.log("someone left");
+//     })
+// });
 
 io.listen(3000);

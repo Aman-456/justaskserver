@@ -10,7 +10,8 @@ let database = () => {
             });
     }
     catch (e) {
-        console.log(e);
+        // console.log(e);
+        console.log("DataBase Connection Error");
     }
 }
 module.exports = database

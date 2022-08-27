@@ -98,7 +98,7 @@ router.post('/signin', async (req, res, next) => {
 router.post('/getSingleUser', async (req, res, next) => {
     try {
         const _id = mongoose.Types.ObjectId(req.body.id)
-        const current = req.body.current
+        const current = req.body.currnent
         const user = await User.findById(_id)
         !user && res.json({ type: "failure", result: "No user found" });
 

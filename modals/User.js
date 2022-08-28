@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const bcrypt = require("bcrypt")
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -34,16 +35,27 @@ const userSchema = new mongoose.Schema({
         type: Array,
         default: []
     },
-    isRoomAdmin: {
-        type: Boolean,
-        default: false
-    },
     bio: {
         type: String,
-        max: 160
+        length: 20
     }
 },
     { timestamps: true }
 )
+
+userSchema.methods.matchpass = async function (pass) {
+    console.log("pass", pass);
+    console.log("this", this);
+    console.log(await bcrypt.compare(pass, this.password));
+    return await bcrypt.compare(pass, this.password)
+}
+
+userSchema.pre("save", async function (next) {
+
+    const salt = await bcrypt.genSalt(10)
+    this.password = await bcrypt.hash(this.password, salt)
+
+})
+
 const User = mongoose.model('Users', userSchema)
 module.exports = User;

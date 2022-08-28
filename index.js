@@ -5,6 +5,7 @@ const cors = require("cors");
 const database = require("./connect");
 const userRoute = require("./routes/users");
 
+
 dotenv.config();          // loads variable from .env file
 database();               // database connection
 app.use(cors());          // for cross orign resource sharing

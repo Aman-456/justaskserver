@@ -1,4 +1,5 @@
 const User = require('../modals/User')
+const jwt = require('jsonwebtoken')
 
 const register = async (req, res, next) => {
     try {
@@ -37,18 +38,23 @@ const register = async (req, res, next) => {
 const signin = async (req, res, next) => {
     try {
         const user = await User.findOne({ email: req.body.email });
-        !user && res.json({ type: "failure", result: "No user found" });
+        if (!user)
+            return res.json({ type: "failure", result: "No user found" });
 
         if (user && (await user.matchpass(req.body.password))) {
+            const token = jwt.sign({ email: req.body.email }, process.env.SECRET_JWT)
             const { password, ...rest } = user._doc
-            res.json({ type: "success", result: { ...rest } })
+            console.log(token);
+            res.json({ type: "success", result: { ...rest, token: token } })
         }
         else {
-            res.json({ type: "failure", result: "Wrong Credentials" });
+            return res.json({ type: "failure", result: "Wrong Credentials" });
         }
     }
     catch (e) {
         console.log(e);
+        return res.json({ type: "failure", result: "Internal Server Error" });
+
     }
 }
 const registerWithImage = async (req, res, next) => {
@@ -91,12 +97,14 @@ const registerWithImage = async (req, res, next) => {
 const getSingleUser = async (req, res, next) => {
     try {
         const _id = req.body.id
+
         var button = ""
         const current = req.body.current
         const user = await User.findById(_id)
         if (!user) {
             return res.json({ type: "failure", result: "No user found" });
         }
+        console.log("user", user);
         if (user.friends.includes(current)) {
             button = "Remove"
         }

@@ -38,14 +38,15 @@ const userSchema = new mongoose.Schema({
     bio: {
         type: String,
         length: 20
+    },
+    refreshtoken: {
+        type: String
     }
 },
     { timestamps: true }
 )
 
 userSchema.methods.matchpass = async function (pass) {
-    console.log("pass", pass);
-    console.log("this", this);
     console.log(await bcrypt.compare(pass, this.password));
     return await bcrypt.compare(pass, this.password)
 }

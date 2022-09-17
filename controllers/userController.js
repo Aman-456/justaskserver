@@ -42,10 +42,26 @@ const signin = async (req, res, next) => {
             return res.json({ type: "failure", result: "No user found" });
 
         if (user && (await user.matchpass(req.body.password))) {
-            const token = jwt.sign({ email: req.body.email }, process.env.SECRET_JWT)
+
+            const token = jwt.sign(
+                { email: req.body.email },
+                process.env.SECRET_JWT,
+                { expiresIn: '20m' }
+            )
+
+
+            const refreshtoken = jwt.sign(
+                { email: req.body.email },
+                process.env.REFRESH_TOKEN
+            )
+
+
+
             const { password, ...rest } = user._doc
-            console.log(token);
-            res.json({ type: "success", result: { ...rest, token: token } })
+            user.refreshtoken = refreshtoken
+            await user.save();
+
+            res.json({ type: "success", result: { ...rest, token, refreshtoken } })
         }
         else {
             return res.json({ type: "failure", result: "Wrong Credentials" });
@@ -55,6 +71,16 @@ const signin = async (req, res, next) => {
         console.log(e);
         return res.json({ type: "failure", result: "Internal Server Error" });
 
+    }
+}
+
+const refresh = async (req, res) => {
+    const refreshtoken = req.body.token
+    if (!refreshtoken) {
+        return res.json({
+            type: "unAuth",
+            result: "You are not authenticated"
+        })
     }
 }
 const registerWithImage = async (req, res, next) => {

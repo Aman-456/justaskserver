@@ -38,30 +38,21 @@ const register = async (req, res, next) => {
 const signin = async (req, res, next) => {
     try {
         const user = await User.findOne({ email: req.body.email });
+        // console.log(user, req.body);
         if (!user)
             return res.json({ type: "failure", result: "No user found" });
 
-        if (user && (await user.matchpass(req.body.password))) {
+        else if (user && (await user.matchpass(req.body.password, user.password))) {
 
             const token = jwt.sign(
-                { email: req.body.email },
+                { id: user._id },
                 process.env.SECRET_JWT,
-                { expiresIn: '20m' }
             )
-
-
-            const refreshtoken = jwt.sign(
-                { email: req.body.email },
-                process.env.REFRESH_TOKEN
-            )
-
-
 
             const { password, ...rest } = user._doc
-            user.refreshtoken = refreshtoken
             await user.save();
 
-            res.json({ type: "success", result: { ...rest, token, refreshtoken } })
+            res.json({ type: "success", result: { ...rest, token } })
         }
         else {
             return res.json({ type: "failure", result: "Wrong Credentials" });
@@ -151,13 +142,11 @@ const getSingleUser = async (req, res, next) => {
 }
 const updateStatus = async (req, res, next) => {
     try {
-        console.log(req.body);
         const _id = req.body.id
         const user = await User.findOne({ _id });
         !user && res.json({ type: "failure", result: "No user found" });
         const update = await User.findByIdAndUpdate(_id, { $set: req.body }, { new: true })
         const { password, ...rest } = update._doc
-        console.log(rest);
         res.json({ type: "success", result: { ...rest }, updated: "true" });
     }
     catch (e) {
@@ -271,7 +260,7 @@ const unfollow = async (req, res, next) => {
             const unfollowid = await User.findById(req.body.usertounfollowid);
             const currentUser = await User.findById(req.body.id);
             if (!unfollowid)
-                res.json({
+                return res.json({
                     type: "failure",
                     result: "No user found"
                 });
@@ -313,17 +302,105 @@ const removefriend = async (req, res, next) => {
                     result: "No user found"
                 });
             if (removeid.friends.includes(req.body.id)) {
-
                 await removeid.updateOne({
                     $pull: { friends: req.body.id }
                 })
                 await currentUser.updateOne({
-                    $pull: { friends: req.body.removeid }
+                    $pull: { friends: req.body.removeId }
                 })
+                console.log("here");
+                const friends = await currentUser.friends;
+                const users = await User.find().where('_id').in(friends)
+
                 res.json({
-                    type: "success", result: `Friend Removed`
+                    type: "success", result: `Friend Removed`,
+                    data: users
                 })
             }
+
+            else if (
+                removeid.pendingReq.includes(req.body.id) ||
+                currentUser.addfriendReq.includes(req.body.removeId)
+            ) {
+                console.log("fisrt2");
+
+                await removeid.updateOne({
+                    $pull: { pendingReq: req.body.id }
+                })
+                await currentUser.updateOne({
+                    $pull: { addfriendReq: req.body.removeId },
+                }, { new: true })
+                const friends = await currentUser.addfriendReq;
+                const users = await User.find().where('_id').in(friends)
+                res.json({
+                    type: "success", result: `Friend Removed`
+                    , data: users
+
+                })
+            }
+            else if (removeid.addfriendReq.includes(req.body.id)) {
+                console.log("fisrt3");
+
+                await removeid.updateOne({
+                    $pull: { addfriendReq: req.body.id }
+                })
+                await currentUser.updateOne({
+                    $pull: { pendingReq: req.body.removeId }
+                })
+                const friends = await currentUser.pendingReq;
+                const users = await User.find().where('_id').in(friends)
+                res.json({
+                    type: "success", result: `Friend Removed`,
+                    data: users
+                })
+            }
+            else res.json({
+                type: "failure", result: `You aren't friends with this user`
+            });
+        }
+        catch (e) {
+            console.log(e.message);
+            res.json({
+                type: "failure", result: `Can't Find the user or can't unfollow the user or user not found`
+            });
+        }
+    }
+    else res.json({
+        type: "failure", result: `Server Error`
+    });
+}
+const acceptfriend = async (req, res, next) => {
+    if (req.body.id !== req.body.acceptid) {
+        try {
+            const acceptid = await User.findById(req.body.acceptid);
+            const currentUser = await User.findById(req.body.id);
+            if (!acceptid)
+                res.json({
+                    type: "failure",
+                    result: "No user found"
+                });
+            if (acceptid.pendingReq.includes(req.body.id)) {
+
+                await acceptid.updateOne({
+                    $pull: { pendingReq: req.body.id }
+                })
+                await acceptid.updateOne({
+                    $push: { friends: req.body.id }
+                })
+                await currentUser.updateOne({
+                    $pull: { addfriendReq: req.body.acceptid }
+                })
+                await currentUser.updateOne({
+                    $push: { friends: req.body.acceptid }
+                })
+                const friends = await currentUser.addfriendReq;
+                const users = await User.find().where('_id').in(friends)
+                return res.json({
+                    type: "success", result: `Friend Request Accpeted`,
+                    data: users
+                })
+            }
+
             else res.json({
                 type: "failure", result: `You aren't friends with this user`
             });
@@ -349,7 +426,52 @@ const friendList = async (req, res, next) => {
                 type: "failure",
                 result: "No users found"
             });
+        const users = await User.find().where('_id').in(friends)
 
+        res.json({ type: "success", list: users })
+    }
+    catch (e) {
+        console.log("error");
+        res.json({
+            type: "failure",
+            result: `Can't Find the users`
+        });
+    }
+
+}
+const pendinglist = async (req, res, next) => {
+    try {
+        const id = await User.findById(req.body.id);
+        const friends = await id.pendingReq;
+
+        if (friends == [])
+            res.json({
+                type: "failure",
+                result: "No users found"
+            });
+        const users = await User.find().where('_id').in(friends)
+
+        res.json({ type: "success", list: users })
+    }
+    catch (e) {
+        console.log("error");
+        res.json({
+            type: "failure",
+            result: `Can't Find the users`
+        });
+    }
+
+}
+const friendrequest = async (req, res, next) => {
+    try {
+        const id = await User.findById(req.body.id);
+        const friends = await id.addfriendReq;
+
+        if (friends == [])
+            res.json({
+                type: "failure",
+                result: "No users found"
+            });
         const users = await User.find().where('_id').in(friends)
 
         res.json({ type: "success", list: users })
@@ -375,6 +497,9 @@ module.exports = {
     follow,
     unfollow,
     removefriend,
-    friendList
+    friendList,
+    acceptfriend,
+    pendinglist,
+    friendrequest
 
 }

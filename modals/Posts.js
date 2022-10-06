@@ -14,6 +14,7 @@ const Comment = new Schema({
     reply: [CommentReply],
     Body: { type: String },
     createdAt: { type: Date }
+
 });
 
 const Like = new Schema({

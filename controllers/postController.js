@@ -40,6 +40,27 @@ const CreatePost = async (req, res, next) => {
     }
 }
 
+// const GetAllPosts = async (req, res, next) => {
+//     try {
+//         const find = await Posts.find({}).sort({ createdAt: - 1 })
+//         if (find) {
+//             res.json({
+//                 type: "success",
+//                 result: find,
+//                 user: req.user
+//             });
+//         }
+//         else {
+//             res.json({
+//                 type: "failure",
+//                 result: "server error"
+//             });
+//         }
+//     }
+//     catch (e) {
+//         console.log(e);
+//     }
+// }
 const GetSinglePost = async (req, res, next) => {
     try {
         const post = await Posts.findById(req.body.id)
@@ -67,6 +88,7 @@ const GetAllPosts = async (req, res, next) => {
         console.log(e);
     }
 }
+
 
 
 const GetMyAnswers = async (req, res, next) => {
@@ -480,6 +502,7 @@ module.exports = {
     AddPostComment,
     AddReply,
     GetAllPosts,
+    GetSinglePost,
     GetMyAnswers,
     GetMyTopics,
     EditCommentPost,
@@ -487,6 +510,6 @@ module.exports = {
     DeleteCommentPost,
     DeleteReplyCommentPost,
     LikePost,
-    UnLikePost,
-    GetSinglePost
+    UnLikePost
+
 }

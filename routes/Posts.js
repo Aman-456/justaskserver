@@ -1,5 +1,6 @@
 
 const router = require("express").Router();
+const { CreateComment } = require("../controllers/commentsController")
 const {
     CreatePost,
     AddPostComment,
@@ -16,6 +17,7 @@ const middleware = require("../middleware/authentication")
 
 router.post("/", middleware.authenticator, CreatePost)
 router.get("/", middleware.authenticator, GetAllPosts)
+
 router.post("/singlepost", middleware.authenticator, GetSinglePost)
 router.get("/myanswers", middleware.authenticator, GetMyAnswers)
 router.get("/mytopics", middleware.authenticator, GetMyTopics)

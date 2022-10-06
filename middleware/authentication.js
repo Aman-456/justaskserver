@@ -1,19 +1,18 @@
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
+const User = require("../modals/User");
 
-const authenticator = (req, res, next) => {
-    const auth = req.headers.auth
-    console.log("auth", auth);
+const authenticator = async (req, res, next) => {
+    const auth = req.headers.authorization
     if (auth) {
         const token = auth.split(" ")[1]
-        jwt.verify(token, process.env.SECRET_JWT, (err, user) => {
-            if (err) {
-                return res.json({
-                    type: "unAuth",
-                    result: "Invalid Token, login again to access information!"
-                })
-            }
-            else next()
-        })
+        const { id } = jwt.verify(token, process.env.SECRET_JWT)
+        if (id) {
+            req.user = id
+        }
+        else {
+            res.json({ type: "unAuth", result: "You are not authorixed" })
+        }
+        next()
     }
 }
 

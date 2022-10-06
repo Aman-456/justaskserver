@@ -2,10 +2,25 @@ const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
 
+const CommentReply = new Schema({
+    Author: { type: Schema.Types.ObjectId, ref: "Users" },
+    Body: { type: String },
+});
+
+
+const Comment = new Schema({
+    Author: { type: Schema.Types.ObjectId, ref: "Users" },
+    reply: [CommentReply],
+    Body: { type: String },
+});
+
+const Like = new Schema({
+    Author: { type: Schema.Types.ObjectId, ref: "Users" },
+});
 
 const PostSchema = new mongoose.Schema({
     Author: {
-        type: Object
+        type: Schema.Types.ObjectId, ref: "Users"
     },
     Title: {
         type: String,
@@ -18,19 +33,13 @@ const PostSchema = new mongoose.Schema({
         type: Array,
         required: true
     },
-    Comments: {
-        type: Schema.Types.ObjectId,
-        ref: "Comments",
-    },
+    Comments: [Comment],
     Solved: {
         type: Boolean,
         default: false
     },
-    meta: {
-        votes: Number,
-        favs: Number,
-        views: Number
-    }
+    Likes: [Like],
+    Views: Number
 },
     { timestamps: true }
 )

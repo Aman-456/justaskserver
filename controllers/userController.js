@@ -38,30 +38,21 @@ const register = async (req, res, next) => {
 const signin = async (req, res, next) => {
     try {
         const user = await User.findOne({ email: req.body.email });
+        // console.log(user, req.body);
         if (!user)
             return res.json({ type: "failure", result: "No user found" });
 
-        if (user && (await user.matchpass(req.body.password))) {
+        else if (user && (await user.matchpass(req.body.password, user.password))) {
 
             const token = jwt.sign(
-                { email: req.body.email },
+                { id: user._id },
                 process.env.SECRET_JWT,
-                { expiresIn: '20m' }
             )
-
-
-            const refreshtoken = jwt.sign(
-                { email: req.body.email },
-                process.env.REFRESH_TOKEN
-            )
-
-
 
             const { password, ...rest } = user._doc
-            user.refreshtoken = refreshtoken
             await user.save();
 
-            res.json({ type: "success", result: { ...rest, token, refreshtoken } })
+            res.json({ type: "success", result: { ...rest, token } })
         }
         else {
             return res.json({ type: "failure", result: "Wrong Credentials" });
@@ -271,7 +262,7 @@ const unfollow = async (req, res, next) => {
             const unfollowid = await User.findById(req.body.usertounfollowid);
             const currentUser = await User.findById(req.body.id);
             if (!unfollowid)
-                res.json({
+                return res.json({
                     type: "failure",
                     result: "No user found"
                 });

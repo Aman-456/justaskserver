@@ -5,6 +5,7 @@ const Schema = mongoose.Schema
 const CommentReply = new Schema({
     Author: { type: Schema.Types.ObjectId, ref: "Users" },
     Body: { type: String },
+    createdAt: { type: Date }
 });
 
 
@@ -12,6 +13,8 @@ const Comment = new Schema({
     Author: { type: Schema.Types.ObjectId, ref: "Users" },
     reply: [CommentReply],
     Body: { type: String },
+    createdAt: { type: Date }
+
 });
 
 const Like = new Schema({

@@ -61,7 +61,19 @@ const CreatePost = async (req, res, next) => {
 //         console.log(e);
 //     }
 // }
-
+const GetSinglePost = async (req, res, next) => {
+    try {
+        const post = await Posts.findById(req.body.id)
+            .populate('Author')
+            .populate("Comments.Author")
+            .populate("Comments.reply.Author")
+        if (post) {
+            return res.json({ type: "success", result: post })
+        }
+    }
+    catch (e) {
+    }
+}
 const GetAllPosts = async (req, res, next) => {
     try {
         const post = await Posts.find({})
@@ -70,6 +82,38 @@ const GetAllPosts = async (req, res, next) => {
             .populate("Comments.reply.Author")
         if (post) {
             return res.json({ type: "success", result: post })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
+
+
+
+const GetMyAnswers = async (req, res, next) => {
+    try {
+
+        const p = await Posts.find(
+            {
+                Comments: { $elemMatch: { Author: req.user } }, //comment id
+            },
+        ).populate("Author")
+        if (p) {
+            return res.json({ type: "success", result: p })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
+
+
+const GetMyTopics = async (req, res, next) => {
+    try {
+        const p = await Posts.find({ Author: req.user }).populate("Author")
+        if (p) {
+            return res.json({ type: "success", result: p })
         }
     }
     catch (e) {
@@ -458,10 +502,14 @@ module.exports = {
     AddPostComment,
     AddReply,
     GetAllPosts,
+    GetSinglePost,
+    GetMyAnswers,
+    GetMyTopics,
     EditCommentPost,
     EditReplyCommentPost,
     DeleteCommentPost,
     DeleteReplyCommentPost,
     LikePost,
     UnLikePost
+
 }

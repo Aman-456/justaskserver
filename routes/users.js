@@ -45,9 +45,21 @@ router.delete('/removefriend',
     middleware.authenticator,
     controllers.removefriend
 );
+router.delete('/acceptfriend',
+    middleware.authenticator,
+    controllers.acceptfriend
+);
 router.post('/friendslist',
     middleware.authenticator,
     controllers.friendList
+);
+router.post('/pendinglist',
+    middleware.authenticator,
+    controllers.pendinglist
+);
+router.post('/requestlist',
+    middleware.authenticator,
+    controllers.friendrequest
 );
 
 exports.routes = router;

@@ -1,5 +1,7 @@
 const mongoose = require('mongoose')
 const bcrypt = require("bcrypt")
+const Schema = mongoose.Schema
+
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -23,18 +25,24 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ""
     },
-    friends: {
-        type: Array,
-        default: []
-    },
-    addfriendReq: {
-        type: Array,
-        default: []
-    },
-    pendingReq: {
-        type: Array,
-        default: []
-    },
+    friends: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: "Users"
+        },
+    ],
+    addfriendReq: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: "Users"
+        },
+    ],
+    pendingReq: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: "Users"
+        },
+    ],
     bio: {
         type: String,
         length: 20

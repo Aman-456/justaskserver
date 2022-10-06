@@ -33,13 +33,6 @@ app.listen(process.env.PORT || 5000, () => { // listens to the port
 app.get('/', (req, res) => res.send("ok")); // for checking server
 
 
-const { Server } = require("socket.io");
-
-const io = new Server({
-    cors: {
-        origin: "http://localhost:3000"
-    }
-});
 
 // io.on("connection", (socket) => {
 //     console.log("socket connected");
@@ -49,4 +42,3 @@ const io = new Server({
 //     })
 // });
 
-io.listen(3000);

@@ -1,13 +1,12 @@
 const express = require("express")
 const app = express();
-const dotenv = require("dotenv");
+require("dotenv").config();
 const cors = require("cors");
 const database = require("./connect");
 const userRoute = require("./routes/users");
 const postRoute = require("./routes/Posts");
 const path = require('path')
 
-dotenv.config();          // loads variable from .env file
 database();               // database connection
 app.use(cors());          // for cross orign resource sharing
 app.use(express.json());  // parses incoming api request with json payloads- middleware

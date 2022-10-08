@@ -10,7 +10,9 @@ const {
     UnLikePost,
     GetMyAnswers,
     GetMyTopics,
-    GetSinglePost
+    GetSinglePost,
+    GetMySavedPosts,
+    AddtoSavedPosts
 } = require("../controllers/postController")
 const middleware = require("../middleware/authentication")
 
@@ -21,6 +23,8 @@ router.get("/", middleware.authenticator, GetAllPosts)
 router.post("/singlepost", middleware.authenticator, GetSinglePost)
 router.get("/myanswers", middleware.authenticator, GetMyAnswers)
 router.get("/mytopics", middleware.authenticator, GetMyTopics)
+router.get("/saved", middleware.authenticator, GetMySavedPosts)
+router.get("/addtosave", middleware.authenticator, AddtoSavedPosts)
 router.post("/comment", middleware.authenticator, AddPostComment)
 router.post("/reply", middleware.authenticator, AddReply)
 router.post("/like", middleware.authenticator, LikePost)

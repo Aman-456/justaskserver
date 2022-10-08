@@ -25,6 +25,9 @@ const PostSchema = new mongoose.Schema({
     Author: {
         type: Schema.Types.ObjectId, ref: "Users"
     },
+    SavedBy: [{
+        type: Schema.Types.ObjectId, ref: "Users"
+    }],
     Title: {
         type: String,
         trim: true,

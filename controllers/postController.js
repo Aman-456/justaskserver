@@ -1,5 +1,6 @@
 const { json } = require("express")
 const Posts = require("../modals/Posts")
+const SavedPosts = require("../modals/SavedPosts")
 const Comments = require("../modals/Comments")
 const User = require("../modals/User")
 
@@ -92,6 +93,41 @@ const GetAllPosts = async (req, res, next) => {
 
 
 const GetMyAnswers = async (req, res, next) => {
+    try {
+
+        const p = await Posts.find(
+            {
+                Comments: { $elemMatch: { Author: req.user } }, //comment id
+            },
+        ).populate("Author")
+        if (p) {
+            return res.json({ type: "success", result: p })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
+
+const AddtoSavedPosts = async (req, res, next) => {
+    try {
+
+        const p = await Posts.findByIdAndUpdate(req.body.id,
+            { $push: { SavedBy: req.body.savinguser } },
+            { new: true }
+        )
+        if (p) {
+            p
+            return res.json({ type: "success", result: p })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
+
+
+const GetMySavedPosts = async (req, res, next) => {
     try {
 
         const p = await Posts.find(
@@ -503,6 +539,8 @@ module.exports = {
     AddReply,
     GetAllPosts,
     GetSinglePost,
+    GetMySavedPosts,
+    AddtoSavedPosts,
     GetMyAnswers,
     GetMyTopics,
     EditCommentPost,

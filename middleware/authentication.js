@@ -11,7 +11,7 @@ const authenticator = async (req, res, next) => {
             req.user = id
         }
         else {
-            res.json({ type: "unAuth", result: "You are not authorixed" })
+            return res.json({ type: "unAuth", result: "You are not authorixed" })
         }
         next()
     }

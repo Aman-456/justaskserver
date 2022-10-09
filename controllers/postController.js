@@ -153,15 +153,18 @@ const AddPostComment = async (req, res) => {
     try {
         var data = {
             Body: req.body.body,
-            Author: req.body.user,
-            Post: req.body.post
+            Author: req.user,
         };
         console.log(req.body);
         const post = await Posts.findByIdAndUpdate(
-            req.body.post,
+            req.body.id,
             { $push: { Comments: data } },
             { new: true }
-        );
+        )
+            .populate('Author')
+            .populate("Comments.Author")
+            .populate("Comments.reply.Author")
+        console.log("post", post);
         if (!post) {
             console.log("post", post);
 
@@ -185,19 +188,22 @@ const AddReply = async (req, res) => {
     try {
         var data = {
             Body: req.body.body,
-            Author: req.body.user,
+            Author: req.user
         };
-
+        console.log(req.user);
         const post = await Posts.findOneAndUpdate(
             {
-                Comments: { $elemMatch: { _id: req.body.post } }, //comment id
+                Comments: { $elemMatch: { _id: req.body.id } }, //comment id
             },
             {
                 $push: { "Comments.$.reply": data, },
             },
             { new: true }
 
-        );
+        )
+            .populate('Author')
+            .populate("Comments.Author")
+            .populate("Comments.reply.Author")
         console.log(post);
         if (!post) {
 
@@ -391,18 +397,20 @@ const LikePost = async (req, res) => {
                             Author: req.user,
                         },
                     },
+                },
+                {
+                    new: true
                 }
-            );
+            ).populate("Author");
             if (!postr) {
                 res
                     .status(500)
                     .json({ type: "failure", result: "Update Record error!" });
             }
-            const data = await Getall();
             return res.status(200).json({
                 type: "success",
                 result: "Likes Updated Successfully",
-                data: data,
+                data: postr,
             });
         }
     } catch (error) {
@@ -426,18 +434,20 @@ const UnLikePost = async (req, res) => {
                             Author: req.user,
                         },
                     },
+                },
+                {
+                    new: true
                 }
-            );
+            ).populate("Author");
             if (!postr) {
                 res
                     .status(500)
                     .json({ type: "failure", result: "Update Record error!" });
             }
-            const data = await Getall();
             return res.status(200).json({
                 type: "success",
                 result: "Likes Updated Successfully",
-                data: data,
+                data: postr,
             });
         }
     } catch (error) {

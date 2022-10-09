@@ -24,7 +24,7 @@ const middleware = require("../middleware/authentication")
 router.post("/", middleware.authenticator, CreatePost)
 router.get("/", GetAllPosts)
 
-router.post("/singlepost", middleware.authenticator, GetSinglePost)
+router.post("/singlepost", GetSinglePost)
 router.get("/myanswers", middleware.authenticator, GetMyAnswers)
 router.get("/mytopics", middleware.authenticator, GetMyTopics)
 router.get("/saved", middleware.authenticator, GetMySavedPosts)

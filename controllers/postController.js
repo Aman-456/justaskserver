@@ -1,7 +1,5 @@
-const { json } = require("express")
 const Posts = require("../modals/Posts")
 const SavedPosts = require("../modals/SavedPosts")
-const Comments = require("../modals/Comments")
 const User = require("../modals/User")
 
 const CreatePost = async (req, res, next) => {
@@ -41,27 +39,7 @@ const CreatePost = async (req, res, next) => {
     }
 }
 
-// const GetAllPosts = async (req, res, next) => {
-//     try {
-//         const find = await Posts.find({}).sort({ createdAt: - 1 })
-//         if (find) {
-//             res.json({
-//                 type: "success",
-//                 result: find,
-//                 user: req.user
-//             });
-//         }
-//         else {
-//             res.json({
-//                 type: "failure",
-//                 result: "server error"
-//             });
-//         }
-//     }
-//     catch (e) {
-//         console.log(e);
-//     }
-// }
+
 const GetSinglePost = async (req, res, next) => {
     try {
         const post = await Posts.findById(req.body.id)
@@ -73,20 +51,6 @@ const GetSinglePost = async (req, res, next) => {
         }
     }
     catch (e) {
-    }
-}
-const GetAllPosts = async (req, res, next) => {
-    try {
-        const post = await Posts.find({})
-            .populate('Author')
-            .populate("Comments.Author")
-            .populate("Comments.reply.Author")
-        if (post) {
-            return res.json({ type: "success", result: post })
-        }
-    }
-    catch (e) {
-        console.log(e);
     }
 }
 
@@ -169,6 +133,22 @@ const Getall = async (req, res, next) => {
         console.log(e);
     }
 }
+const GetAllPosts = async (req, res, next) => {
+    try {
+        const post = await Posts.find({})
+            .populate('Author')
+            .populate("Comments.Author")
+            .populate("Comments.reply.Author")
+        if (post) {
+            return res.json({ type: "success", result: post })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
+
+
 const AddPostComment = async (req, res) => {
     try {
         var data = {
@@ -189,7 +169,6 @@ const AddPostComment = async (req, res) => {
                 .status(500)
                 .json({ type: "failure", result: "Server not Responding. Try Again" });
         }
-
         res.status(200).json({
             type: "success",
             result: "comment updated Successfully",
@@ -219,8 +198,7 @@ const AddReply = async (req, res) => {
             { new: true }
 
         );
-        console.log("reply", post);
-
+        console.log(post);
         if (!post) {
 
             return res
@@ -248,45 +226,25 @@ const EditCommentPost = async (req, res) => {
     try {
         console.log(req.body.id);
         console.log(req.body);
-        const role = req.body.userRole.toLowerCase();
-        const postOrganizer = await PostOrganizer.findOneAndUpdate(
+        const post = await Posts.findOneAndUpdate(
             {
-                comments: { $elemMatch: { _id: req.body.id } },
+                Comments: { $elemMatch: { _id: req.body.id } },
             },
             {
                 $set: {
-                    "comments.$.comment": req.body.comment,
+                    "Comments.$.Body": req.body.body,
                 },
+            },
+            {
+                new: true
             }
         );
         // console.log(postOrganizer);
-        if (postOrganizer) {
+        if (post) {
             return res.status(200).json({
                 type: "success",
                 result: "Comment edited Successfully",
-            });
-        } else {
-            const postPlayerResult = await PostPlayer.findOneAndUpdate(
-                {
-                    comments: { $elemMatch: { _id: req.body.id } },
-                },
-                {
-                    $set: {
-                        "comments.$.comment": req.body.comment,
-                    },
-                }
-            );
-            // console.log(postPlayerResult);
-            if (!postPlayerResult) {
-                return res
-                    .status(500)
-                    .json({ type: "failure", result: "Update Record error!" });
-            }
-            const data = await GetPosts();
-            return res.status(200).json({
-                type: "success",
-                result: "Comment edited Successfully",
-                data: data,
+                data: post
             });
         }
     } catch (error) {
@@ -298,53 +256,38 @@ const EditCommentPost = async (req, res) => {
 const EditReplyCommentPost = async (req, res) => {
     try {
         console.log(req.body.id);
-        const role = req.body.userRole.toLowerCase();
-        const postOrganizer = await PostOrganizer.findOneAndUpdate(
+        const postOrganizer = await Posts.findOneAndUpdate(
             {
-                "comments.reply": { $elemMatch: { _id: req.body.id } },
+                "Comments.reply": { $elemMatch: { _id: req.body.id } },
             },
             {
                 $set: {
-                    "comments.$[].reply.$[reply].comment": req.body.comment,
+                    "Comments.$[].reply.$[reply].Body": req.body.body,
+
                 },
+
             },
+
             {
                 arrayFilters: [{ "reply._id": req.body.id }],
-            }
+                new: true
+            },
+
+
         );
         console.log(postOrganizer);
         if (postOrganizer) {
-            const data = await GetPosts();
+            const data = await Getall();
             return res.status(200).json({
                 type: "success",
                 result: "Reply Edited Successfully",
-                data: data,
+                data: postOrganizer,
             });
-        } else {
-            const postPlayerResult = await PostPlayer.findOneAndUpdate(
-                {
-                    "comments.reply": { $elemMatch: { _id: req.body.id } },
-                },
-
-                {
-                    $set: {
-                        "comments.$[].reply.$[reply].comment": req.body.comment,
-                    },
-                },
-                {
-                    arrayFilters: [{ "reply._id": req.body.id }],
-                }
-            );
-            if (!postPlayerResult) {
-                return res
-                    .status(500)
-                    .json({ type: "failure", result: "Update Record error!" });
-            }
-            const data = await GetPosts();
-            return res.status(200).json({
-                type: "success",
-                result: "Reply Edited Successfully",
-                data: data,
+        }
+        else {
+            return res.status(404).json({
+                type: "failure",
+                result: "Can't Find Comment",
             });
         }
     } catch (error) {
@@ -357,49 +300,27 @@ const EditReplyCommentPost = async (req, res) => {
 
 const DeleteReplyCommentPost = async (req, res) => {
     try {
-        console.log(req.body.id);
-        const data = await GetPosts();
-        const postOrganizer = await PostOrganizer.findOneAndUpdate(
+        const post = await Posts.findOneAndUpdate(
             {
-                "comments.reply": { $elemMatch: { _id: req.body.id } },
+                "Comments.reply": { $elemMatch: { _id: req.body.id } },
             },
             {
                 $pull: {
-                    "comments.$.reply": {
+                    "Comments.$.reply": {
                         _id: req.body.id,
                     },
-                },
+                }
+            },
+            {
+                new: true
             }
         );
-        console.log(postOrganizer);
-        if (postOrganizer) {
+        console.log(post);
+        if (post) {
             return res.status(200).json({
                 type: "success",
                 result: "Reply Deleted Successfully",
-            });
-        } else {
-            const postPlayerResult = await PostPlayer.findOneAndUpdate(
-                {
-                    "comments.reply": { $elemMatch: { _id: req.body.id } },
-                },
-                {
-                    $pull: {
-                        "comments.$.reply": {
-                            _id: req.body.id,
-                        },
-                    },
-                }
-            );
-            if (!postPlayerResult) {
-                return res
-                    .status(500)
-                    .json({ type: "failure", result: "Update Record error!" });
-            }
-            const data = await GetPosts();
-            return res.status(200).json({
-                type: "success",
-                result: "Reply Deleted Successfully",
-                data: data,
+                data: post
             });
         }
     } catch (error) {
@@ -410,49 +331,44 @@ const DeleteReplyCommentPost = async (req, res) => {
 
 const DeleteCommentPost = async (req, res) => {
     try {
-        console.log(req.body.id);
-
-        const postOrganizer = await PostOrganizer.findOneAndUpdate(
+        const post = await Posts.findOneAndUpdate(
             {
-                comments: { $elemMatch: { _id: req.body.id } },
+                Comments: { $elemMatch: { _id: req.body.id } },
             },
             {
                 $pull: {
-                    comments: {
+                    Comments: {
                         _id: req.body.id,
                     },
                 },
+            },
+            {
+                new: true
             }
         );
-        console.log(postOrganizer);
-        if (postOrganizer) {
+        if (post) {
+            const p = Getall()
             return res.status(200).json({
                 type: "success",
                 result: "Comment Deleted Successfully",
+                data: post
             });
-        } else {
-            const postPlayerResult = await PostPlayer.findOneAndUpdate(
-                {
-                    comments: { $elemMatch: { _id: req.body.id } },
-                },
-                {
-                    $pull: {
-                        comments: {
-                            _id: req.body.id,
-                        },
-                    },
-                }
-            );
-            if (!postPlayerResult) {
-                return res
-                    .status(500)
-                    .json({ type: "failure", result: "Update Record error!" });
-            }
-            const data = await GetPosts();
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ type: "failure", result: "Server Not Responding" });
+    }
+};
+
+const DeletePost = async (req, res) => {
+    try {
+        console.log(req.body.id);
+
+        const post = await Posts.findOneAndDelete({ _id: req.body.id });
+        if (post) {
             return res.status(200).json({
                 type: "success",
-                result: "Comment Deleted Successfully",
-                data: data,
+                result: "Post Deleted Successfully",
             });
         }
     } catch (error) {
@@ -548,6 +464,7 @@ module.exports = {
     DeleteCommentPost,
     DeleteReplyCommentPost,
     LikePost,
-    UnLikePost
+    UnLikePost,
+    DeletePost
 
 }

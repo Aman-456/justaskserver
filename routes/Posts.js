@@ -12,7 +12,11 @@ const {
     GetMyTopics,
     GetSinglePost,
     GetMySavedPosts,
-    AddtoSavedPosts
+    AddtoSavedPosts,
+    EditCommentPost,
+    EditReplyCommentPost,
+    DeleteCommentPost,
+    DeleteReplyCommentPost
 } = require("../controllers/postController")
 const middleware = require("../middleware/authentication")
 
@@ -25,6 +29,10 @@ router.get("/myanswers", middleware.authenticator, GetMyAnswers)
 router.get("/mytopics", middleware.authenticator, GetMyTopics)
 router.get("/saved", middleware.authenticator, GetMySavedPosts)
 router.get("/addtosave", middleware.authenticator, AddtoSavedPosts)
+router.post("/editcomment", middleware.authenticator, EditCommentPost)
+router.post("/editreply", middleware.authenticator, EditReplyCommentPost)
+router.post("/deletecomment", middleware.authenticator, DeleteCommentPost)
+router.post("/deletereply", middleware.authenticator, DeleteReplyCommentPost)
 router.post("/comment", middleware.authenticator, AddPostComment)
 router.post("/reply", middleware.authenticator, AddReply)
 router.post("/like", middleware.authenticator, LikePost)

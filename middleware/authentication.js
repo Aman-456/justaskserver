@@ -9,7 +9,7 @@ const authenticator = async (req, res, next) => {
         if (id) {
             req.user = id
         }
-        else {
+        else if (!auth.split(" ")[1]) {
             return res.json({ type: "unAuth", result: "You are not authorixed" })
         }
         next()

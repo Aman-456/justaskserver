@@ -1,5 +1,4 @@
 const jwt = require("jsonwebtoken");
-const User = require("../modals/User");
 
 const authenticator = async (req, res, next) => {
 
@@ -14,6 +13,10 @@ const authenticator = async (req, res, next) => {
             return res.json({ type: "unAuth", result: "You are not authorixed" })
         }
         next()
+    }
+    else {
+        return res.json({ type: "unAuth", result: "You are not authorixed" })
+
     }
 }
 

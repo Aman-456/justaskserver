@@ -22,7 +22,7 @@ const middleware = require("../middleware/authentication")
 
 
 router.post("/", middleware.authenticator, CreatePost)
-router.get("/", middleware.authenticator, GetAllPosts)
+router.get("/", GetAllPosts)
 
 router.post("/singlepost", middleware.authenticator, GetSinglePost)
 router.get("/myanswers", middleware.authenticator, GetMyAnswers)

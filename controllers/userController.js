@@ -185,19 +185,22 @@ const updatePass = async (req, res, next) => {
         console.log("error", e);
     }
 }
-const Delete = async (req, res, next) => {
+const DELETEUSER = async (req, res, next) => {
     try {
-        const _id = req.body.id
-        const user = await User.deleteOne({ _id });
-        !user && res.json({ type: "failure", result: "No user found" });
+        const _id = req.user
+        console.log(req.user);
+        const user = await User.findByIdAndDelete(_id);
+        if (!user)
+            return res.json({ type: "failure", result: "No user found" });
         // const { password, ...rest } = update
-        console.log(update);
+        console.log(user);
         res.json({
             type: "success", result: `Account has been deleted `
         });
     }
     catch (e) {
         console.log(e);
+        return res.json({ type: "failure", result: e.message });
     }
 }
 const follow = async (req, res, next) => {
@@ -484,13 +487,13 @@ module.exports = {
     updateStatus,
     VerifyEmail,
     updatePass,
-    Delete,
     follow,
     unfollow,
     removefriend,
     friendList,
     acceptfriend,
     pendinglist,
-    friendrequest
+    friendrequest,
+    DELETEUSER
 
 }

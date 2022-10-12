@@ -29,10 +29,7 @@ router.put('/VerifyEmail',
 router.put('/updatePass',
     controllers.updatePass
 );
-router.delete('/delete',
-    middleware.authenticator,
-    controllers.Delete
-);
+
 router.put('/follow',
     middleware.authenticator,
     controllers.follow
@@ -61,5 +58,11 @@ router.post('/requestlist',
     middleware.authenticator,
     controllers.friendrequest
 );
+
+router.delete('/delete',
+    middleware.authenticator,
+    controllers.DELETEUSER
+);
+
 
 exports.routes = router;

@@ -33,6 +33,7 @@ const register = async (req, res, next) => {
     }
     catch (e) {
         console.log(e);
+        return res.json({ type: "failure", result: e.message })
     }
 }
 const signin = async (req, res, next) => {
@@ -46,11 +47,10 @@ const signin = async (req, res, next) => {
 
             const token = jwt.sign(
                 { id: user._id },
-                `${process.env.SECRET_JWT}`,
+                process.env.SECRET_JWT,
             )
 
             const { password, ...rest } = user._doc
-            await user.save();
 
             res.json({ type: "success", result: { ...rest, token } })
         }
@@ -62,16 +62,6 @@ const signin = async (req, res, next) => {
         console.log(e);
         return res.json({ type: "failure", result: "Internal Server Error" });
 
-    }
-}
-
-const refresh = async (req, res) => {
-    const refreshtoken = req.body.token
-    if (!refreshtoken) {
-        return res.json({
-            type: "unAuth",
-            result: "You are not authenticated"
-        })
     }
 }
 const registerWithImage = async (req, res, next) => {
@@ -109,6 +99,7 @@ const registerWithImage = async (req, res, next) => {
     }
     catch (e) {
         console.log(e);
+        return res.json({ type: "failure", result: e.message })
     }
 }
 const getSingleUser = async (req, res, next) => {

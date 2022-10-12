@@ -55,6 +55,18 @@ userSchema.methods.matchpass = async function (pass, password) {
     return await bcrypt.compare(pass, password)
 }
 
+userSchema.pre('save', async function (next) {
+    try {
+        var user = this;
+        const salt = await bcrypt.genSalt(10)
+        const hashed = await bcrypt.hash(user.password, salt)
+        this.password = hashed
+        next();
+    }
+    catch (e) {
+        console.log(e);
+    }
+})
 
 
 const User = mongoose.model('Users', userSchema)

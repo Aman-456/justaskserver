@@ -46,6 +46,7 @@ const GetSinglePost = async (req, res, next) => {
             .populate('Author')
             .populate("Comments.Author")
             .populate("Comments.reply.Author")
+        console.log(post);
         if (post) {
             return res.json({ type: "success", result: post })
         }

@@ -156,7 +156,7 @@ const AddPostComment = async (req, res) => {
             Body: req.body.body,
             Author: req.user,
         };
-        console.log(req.body);
+
         const post = await Posts.findByIdAndUpdate(
             req.body.id,
             { $push: { Comments: data } },
@@ -165,9 +165,9 @@ const AddPostComment = async (req, res) => {
             .populate('Author')
             .populate("Comments.Author")
             .populate("Comments.reply.Author")
-        console.log("post", post);
+        console.log("post", req.body);
         if (!post) {
-            console.log("post", post);
+
 
             return res
                 .status(500)
@@ -384,25 +384,20 @@ const DeletePost = async (req, res) => {
     }
 };
 
+
 const LikePost = async (req, res) => {
     try {
         const post = await Posts.findOne({ _id: req.body.id });
         if (post) {
-            console.log(req.user);
+            await post.UnLikes.pull(req.user)
+            await post.Likes.push(req.user)
+            let postr = await post.save()
+            console.log(postr);
+            await postr
+                .populate("Comments.Author")
+                .populate("Comments.reply.Author")
+                .populate('Author')
 
-            const postr = await Posts.findOneAndUpdate(
-                { _id: req.body.id },
-                {
-                    $push: {
-                        Likes: {
-                            Author: req.user,
-                        },
-                    },
-                },
-                {
-                    new: true
-                }
-            ).populate("Author");
             if (!postr) {
                 res
                     .status(500)
@@ -423,34 +418,32 @@ const LikePost = async (req, res) => {
 };
 const UnLikePost = async (req, res) => {
     try {
-        const post = await Posts.findOne({ _id: req.body.id });
-        if (post) {
-            console.log(req.user);
-
-            const postr = await Posts.findOneAndUpdate(
-                { _id: req.body.id },
-                {
-                    $pull: {
-                        Likes: {
-                            Author: req.user,
-                        },
-                    },
-                },
-                {
-                    new: true
+        let post = await Posts.findOneAndUpdate(
+            { _id: req.body.id },
+            {
+                $pull: { 'Likes.$.Author': req.user },
+                $push: {
+                    'UnLikes.$.Author': req.user
                 }
-            ).populate("Author");
-            if (!postr) {
-                res
-                    .status(500)
-                    .json({ type: "failure", result: "Update Record error!" });
+            },
+            {
+                new: true
             }
-            return res.status(200).json({
-                type: "success",
-                result: "Likes Updated Successfully",
-                data: postr,
-            });
+        ).populate("Comments.Author")
+            .populate("Comments.reply.Author")
+            .populate('Author');
+
+        if (post) {
+            res
+                .status(500)
+                .json({ type: "failure", result: "Update Record error!" });
         }
+        return res.status(200).json({
+            type: "success",
+            result: "Likes Updated Successfully",
+            data: post,
+        });
+
     } catch (error) {
         console.log(error);
         res

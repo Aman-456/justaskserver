@@ -15,9 +15,7 @@ const Comment = new Schema({
 
 }, { timestamps: true });
 
-const Like = new Schema({
-    Author: { type: Schema.Types.ObjectId, ref: "Users" },
-});
+
 const Unlike = new Schema({
     Author: { type: Schema.Types.ObjectId, ref: "Users" },
 });
@@ -45,7 +43,10 @@ const PostSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    Likes: [Like],
+    Likes: {
+        count: Number,
+        liked: Array
+    },
     UnLikes: [Unlike],
     Views: Number
 },

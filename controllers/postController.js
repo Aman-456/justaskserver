@@ -1,7 +1,7 @@
 const Posts = require("../modals/Posts")
 const SavedPosts = require("../modals/SavedPosts")
 const User = require("../modals/User")
-
+const mongoose = require('mongoose')
 const CreatePost = async (req, res, next) => {
     try {
         const id = req.body.Author
@@ -55,8 +55,6 @@ const GetSinglePost = async (req, res, next) => {
     }
 }
 
-
-
 const GetMyAnswers = async (req, res, next) => {
     try {
 
@@ -76,14 +74,14 @@ const GetMyAnswers = async (req, res, next) => {
 
 const AddtoSavedPosts = async (req, res, next) => {
     try {
-
-        const p = await Posts.findByIdAndUpdate(req.body.id,
-            { $push: { SavedBy: req.body.savinguser } },
-            { new: true }
-        )
-        if (p) {
-            p
-            return res.json({ type: "success", result: p })
+        console.log("here", req.body.id);
+        const post = new SavedPosts({
+            Author: req.user,
+            Post: req.body.id
+        })
+        const a = await post.save()
+        if (a) {
+            return res.json({ type: "success", result: { ...a } })
         }
     }
     catch (e) {
@@ -94,14 +92,12 @@ const AddtoSavedPosts = async (req, res, next) => {
 
 const GetMySavedPosts = async (req, res, next) => {
     try {
+        var id = mongoose.Types.ObjectId(req.user);
 
-        const p = await Posts.find(
-            {
-                Comments: { $elemMatch: { Author: req.user } }, //comment id
-            },
-        ).populate("Author")
-        if (p) {
-            return res.json({ type: "success", result: p })
+        const posts = await SavedPosts.find({ Author: id });
+        console.log(posts);
+        if (posts) {
+            return res.json({ type: "success", result: posts })
         }
     }
     catch (e) {
@@ -384,56 +380,43 @@ const DeletePost = async (req, res) => {
     }
 };
 
-
 const LikePost = async (req, res) => {
     try {
-        const post = await Posts.findOne({ _id: req.body.id });
-        if (post) {
-            await post.UnLikes.pull(req.user)
-            await post.Likes.push(req.user)
-            let postr = await post.save()
-            console.log(postr);
-            await postr
-                .populate("Comments.Author")
+        let post
+
+        if (req.body.type === "like") {
+            post = await Posts.findOneAndUpdate(
+                { _id: req.body.id },
+                {
+                    $inc: { 'Likes.count': 1 },
+                    $addToSet: {
+                        'Likes.liked': {
+                            id: req.user,
+                            type: "like"
+                        }
+                    }
+                },
+                { new: true }
+            ).populate("Comments.Author")
+                .populate("Comments.reply.Author")
+                .populate('Author')
+        }
+        else if (req.body.type === "unlike") {
+            post = await Posts.findOneAndUpdate(
+                { _id: req.body.id },
+                {
+                    $inc: { 'Likes.count': -1 },
+                    $pull: { 'Likes.liked': { id: req.user } }
+                },
+                { new: true }
+            ).populate("Comments.Author")
                 .populate("Comments.reply.Author")
                 .populate('Author')
 
-            if (!postr) {
-                res
-                    .status(500)
-                    .json({ type: "failure", result: "Update Record error!" });
-            }
-            return res.status(200).json({
-                type: "success",
-                result: "Likes Updated Successfully",
-                data: postr,
-            });
         }
-    } catch (error) {
-        console.log(error);
-        res
-            .status(500)
-            .json({ type: "failure", result: "Server not Responding. Try Again" });
-    }
-};
-const UnLikePost = async (req, res) => {
-    try {
-        let post = await Posts.findOneAndUpdate(
-            { _id: req.body.id },
-            {
-                $pull: { 'Likes.$.Author': req.user },
-                $push: {
-                    'UnLikes.$.Author': req.user
-                }
-            },
-            {
-                new: true
-            }
-        ).populate("Comments.Author")
-            .populate("Comments.reply.Author")
-            .populate('Author');
 
-        if (post) {
+
+        if (!post) {
             res
                 .status(500)
                 .json({ type: "failure", result: "Update Record error!" });
@@ -452,7 +435,64 @@ const UnLikePost = async (req, res) => {
     }
 };
 
+const UnLikePost = async (req, res) => {
+    try {
+        let post = await Posts.find({ Likes: { $elemMatch: { id: req.user } } })
 
+        if (post) {
+
+            if (req.body.type === "like") {
+                post = await Posts.findOneAndUpdate(
+                    { _id: req.body.id },
+                    {
+                        $inc: { 'Likes.count': -1 },
+                        $addToSet: { 'Likes.liked': { id: req.user, type: "unlike" } }
+                    },
+                    { new: true }
+                ).populate("Comments.Author")
+                    .populate("Comments.reply.Author")
+                    .populate('Author')
+            }
+            else if (req.body.type === "unlike") {
+                post = await Posts.findOneAndUpdate(
+                    { _id: req.body.id },
+                    {
+                        $inc: { 'Likes.count': 1 },
+                        $pull: { 'Likes.liked': { id: req.user, } }
+
+                    },
+                    { new: true }
+                ).populate("Comments.Author")
+                    .populate("Comments.reply.Author")
+                    .populate('Author')
+
+            }
+
+        }
+        else {
+            post = await Posts.find({ _id: req.body.id })
+                .populate('Author')
+                .populate("Comments.Author")
+                .populate("Comments.reply.Author")
+        }
+        if (!post) {
+            res
+                .status(500)
+                .json({ type: "failure", result: "Update Record error!" });
+        }
+        return res.status(200).json({
+            type: "success",
+            result: "Likes Updated Successfully",
+            data: post,
+        });
+
+    } catch (error) {
+        console.log(error);
+        res
+            .status(500)
+            .json({ type: "failure", result: "Server not Responding. Try Again" });
+    }
+};
 module.exports = {
     CreatePost,
     AddPostComment,

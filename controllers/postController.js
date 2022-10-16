@@ -39,6 +39,46 @@ const CreatePost = async (req, res, next) => {
     }
 }
 
+const
+    EditPost = async (req, res, next) => {
+        try {
+            console.log({
+                Title: req.body.Title,
+                Body: req.body.Body,
+                Tags: req.body.Tags
+            });
+            const edit = await Posts.findByIdAndUpdate(
+                req.body.id,
+                {
+                    $set: {
+                        Title: req.body.Title,
+                        Body: req.body.Body,
+                        Tags: req.body.Tags
+
+                    }
+                },
+                { new: true }
+            )
+                .populate('Author')
+                .populate("Comments.Author")
+                .populate("Comments.reply.Author")
+            if (edit) {
+                res.json({
+                    type: "success",
+                    data: edit
+                });
+            }
+            else {
+                res.json({
+                    type: "failure",
+                    result: "server error"
+                });
+            }
+        }
+        catch (e) {
+            console.log(e.message);
+        }
+    }
 
 const GetSinglePost = async (req, res, next) => {
     try {
@@ -62,7 +102,7 @@ const GetMyAnswers = async (req, res, next) => {
             {
                 Comments: { $elemMatch: { Author: req.user } }, //comment id
             },
-        ).populate("Author")
+        ).sort({ $natural: -1 }).populate("Author")
         if (p) {
             return res.json({ type: "success", result: p })
         }
@@ -78,7 +118,7 @@ const GetOthersAnswers = async (req, res, next) => {
             {
                 Comments: { $elemMatch: { Author: req.body.id } }, //comment id
             },
-        ).populate("Author")
+        ).sort({ $natural: -1 }).populate("Author")
         if (p) {
             return res.json({ type: "success", result: p })
         }
@@ -92,13 +132,16 @@ const AddtoSavedPosts = async (req, res, next) => {
     try {
 
         console.log("here", req.body.id);
-        const post = new SavedPosts({
+        const p = new SavedPosts({
             Author: req.user,
             Post: req.body.id
         })
-        const a = await post.save()
+        const a = await p.save()
         if (a) {
-            return res.json({ type: "success", result: { ...a } })
+            const post = await Getone(req.body.id)
+            return res.json({
+                type: "success", result: post
+            })
         }
     }
     catch (e) {
@@ -111,8 +154,16 @@ const GetMySavedPosts = async (req, res, next) => {
     try {
         var id = mongoose.Types.ObjectId(req.user);
 
-        const posts = await SavedPosts.find({ Author: id });
-        console.log(posts);
+        const posts = await SavedPosts.find({ Author: id },
+            {
+                Post: 1,
+                _id: 0
+            }
+        )
+            .sort({ $natural: -1 })
+            .populate('Post')
+            .populate({ path: "Post", populate: "Author" })
+
         if (posts) {
             return res.json({ type: "success", result: posts })
         }
@@ -125,8 +176,14 @@ const GetOthersSaved = async (req, res, next) => {
     try {
         var id = mongoose.Types.ObjectId(req.body.id);
 
-        const posts = await SavedPosts.find({ Author: id });
-        console.log(posts);
+        const posts = await SavedPosts.find({ Author: id },
+            {
+                Post: 1,
+                _id: 0
+            })
+            .sort({ $natural: -1 })
+            .populate('Post')
+            .populate({ path: "Post", populate: "Author" })
         if (posts) {
             return res.json({ type: "success", result: posts })
         }
@@ -139,7 +196,7 @@ const GetOthersSaved = async (req, res, next) => {
 
 const GetMyTopics = async (req, res, next) => {
     try {
-        const p = await Posts.find({ Author: req.user }).populate("Author")
+        const p = await Posts.find({ Author: req.user }).sort({ $natural: -1 }).populate("Author")
         if (p) {
             return res.json({ type: "success", result: p })
         }
@@ -150,7 +207,7 @@ const GetMyTopics = async (req, res, next) => {
 }
 const GetOthersTopics = async (req, res, next) => {
     try {
-        const p = await Posts.find({ Author: req.body.id }).populate("Author")
+        const p = await Posts.find({ Author: req.body.id }).sort({ $natural: -1 }).populate("Author")
         if (p) {
             return res.json({ type: "success", result: p })
         }
@@ -172,9 +229,21 @@ const Getall = async (req, res, next) => {
         console.log(e);
     }
 }
+const Getone = async (id) => {
+    try {
+        const post = await Posts.findOne({ _id: id })
+            .populate('Author')
+            .populate("Comments.Author")
+            .populate("Comments.reply")
+        return post
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
 const GetAllPosts = async (req, res, next) => {
     try {
-        const post = await Posts.find({})
+        const post = await Posts.find({}).sort({ $natural: -1 })
             .populate('Author')
             .populate("Comments.Author")
             .populate("Comments.reply.Author")
@@ -186,8 +255,17 @@ const GetAllPosts = async (req, res, next) => {
         console.log(e);
     }
 }
-
-
+const GetRecent = async (req, res, next) => {
+    try {
+        const post = await Posts.find({}, { _id: 1, Title: 1 }).sort({ $natural: -1 }).limit(7)
+        if (post) {
+            return res.json({ type: "success", result: post })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
 const AddPostComment = async (req, res) => {
     try {
         var data = {
@@ -283,7 +361,9 @@ const EditCommentPost = async (req, res) => {
             {
                 new: true
             }
-        );
+        ).populate('Author')
+            .populate("Comments.Author")
+            .populate("Comments.reply")
         // console.log(postOrganizer);
         if (post) {
             return res.status(200).json({
@@ -300,7 +380,6 @@ const EditCommentPost = async (req, res) => {
 
 const EditReplyCommentPost = async (req, res) => {
     try {
-        console.log(req.body.id);
         const postOrganizer = await Posts.findOneAndUpdate(
             {
                 "Comments.reply": { $elemMatch: { _id: req.body.id } },
@@ -318,16 +397,17 @@ const EditReplyCommentPost = async (req, res) => {
                 new: true
             },
 
+        ).populate('Author')
+            .populate("Comments.Author")
+            .populate("Comments.reply")
 
-        );
-        console.log(postOrganizer);
         if (postOrganizer) {
-            const data = await Getall();
             return res.status(200).json({
                 type: "success",
                 result: "Reply Edited Successfully",
                 data: postOrganizer,
-            });
+            })
+
         }
         else {
             return res.status(404).json({
@@ -359,7 +439,9 @@ const DeleteReplyCommentPost = async (req, res) => {
             {
                 new: true
             }
-        );
+        ).populate("Comments.Author")
+            .populate("Comments.reply.Author")
+            .populate('Author');
         console.log(post);
         if (post) {
             return res.status(200).json({
@@ -390,7 +472,11 @@ const DeleteCommentPost = async (req, res) => {
             {
                 new: true
             }
-        );
+        )
+            .populate("Comments.Author")
+            .populate("Comments.reply.Author")
+            .populate('Author')
+
         if (post) {
             const p = Getall()
             return res.status(200).json({
@@ -407,7 +493,6 @@ const DeleteCommentPost = async (req, res) => {
 
 const DeletePost = async (req, res) => {
     try {
-        console.log(req.body.id);
 
         const post = await Posts.findOneAndDelete({ _id: req.body.id });
         if (post) {
@@ -554,5 +639,7 @@ module.exports = {
     DeletePost,
     GetOthersAnswers,
     GetOthersSaved,
-    GetOthersTopics
+    GetOthersTopics,
+    GetRecent,
+    EditPost
 }

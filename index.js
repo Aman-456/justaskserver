@@ -6,18 +6,28 @@ const database = require("./connect");
 const userRoute = require("./routes/users");
 const postRoute = require("./routes/Posts");
 const path = require('path')
+const bodyParser = require("body-parser")
 
 database();               // database connection
 app.use(cors());          // for cross orign resource sharing
-app.use(express.json());  // parses incoming api request with json payloads- middleware
 
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', "*")
     res.header('Access-Control-Allow-Headers', "*")
     next()
 })
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb' }));
+app.use(bodyParser.json({
+    limit: '50mb'
+}));
+
+app.use(bodyParser.urlencoded({
+    limit: '50mb',
+    parameterLimit: 100000,
+    extended: true
+}));
+
+app.use(express.json());  // parses incoming api request with json payloads- middleware
+
 
 app.use('/uploads', express.static('uploads'));
 app.use("/api/user", userRoute.routes);

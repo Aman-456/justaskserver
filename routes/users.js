@@ -12,6 +12,12 @@ router.post(
     controllers.registerWithImage
 );
 router.post(
+    '/updateprofile',
+    middleware.authenticator,
+    upload.single('file'),
+    controllers.UpdatePorfile
+);
+router.post(
     '/signin',
     controllers.signin
 );

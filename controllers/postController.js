@@ -71,9 +71,26 @@ const GetMyAnswers = async (req, res, next) => {
         console.log(e);
     }
 }
+const GetOthersAnswers = async (req, res, next) => {
+    try {
+        console.log("This is quer", req.body);
+        const p = await Posts.find(
+            {
+                Comments: { $elemMatch: { Author: req.body.id } }, //comment id
+            },
+        ).populate("Author")
+        if (p) {
+            return res.json({ type: "success", result: p })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
 
 const AddtoSavedPosts = async (req, res, next) => {
     try {
+
         console.log("here", req.body.id);
         const post = new SavedPosts({
             Author: req.user,
@@ -104,11 +121,36 @@ const GetMySavedPosts = async (req, res, next) => {
         console.log(e);
     }
 }
+const GetOthersSaved = async (req, res, next) => {
+    try {
+        var id = mongoose.Types.ObjectId(req.body.id);
+
+        const posts = await SavedPosts.find({ Author: id });
+        console.log(posts);
+        if (posts) {
+            return res.json({ type: "success", result: posts })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
 
 
 const GetMyTopics = async (req, res, next) => {
     try {
         const p = await Posts.find({ Author: req.user }).populate("Author")
+        if (p) {
+            return res.json({ type: "success", result: p })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
+const GetOthersTopics = async (req, res, next) => {
+    try {
+        const p = await Posts.find({ Author: req.body.id }).populate("Author")
         if (p) {
             return res.json({ type: "success", result: p })
         }
@@ -509,6 +551,8 @@ module.exports = {
     DeleteReplyCommentPost,
     LikePost,
     UnLikePost,
-    DeletePost
-
+    DeletePost,
+    GetOthersAnswers,
+    GetOthersSaved,
+    GetOthersTopics
 }

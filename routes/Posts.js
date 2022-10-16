@@ -10,6 +10,9 @@ const {
     UnLikePost,
     GetMyAnswers,
     GetMyTopics,
+    GetOthersAnswers,
+    GetOthersSaved,
+    GetOthersTopics,
     GetSinglePost,
     GetMySavedPosts,
     AddtoSavedPosts,
@@ -26,8 +29,11 @@ router.get("/", GetAllPosts)
 
 router.post("/singlepost", GetSinglePost)
 router.get("/myanswers", middleware.authenticator, GetMyAnswers)
+router.post("/otheranswers", middleware.authenticator, GetOthersAnswers)
 router.get("/mytopics", middleware.authenticator, GetMyTopics)
+router.post("/othertopics", middleware.authenticator, GetOthersTopics)
 router.get("/saved", middleware.authenticator, GetMySavedPosts)
+router.post("/otherssaved", middleware.authenticator, GetOthersSaved)
 router.get("/addtosave", middleware.authenticator, AddtoSavedPosts)
 router.post("/editcomment", middleware.authenticator, EditCommentPost)
 router.post("/editreply", middleware.authenticator, EditReplyCommentPost)

@@ -102,6 +102,31 @@ const registerWithImage = async (req, res, next) => {
         return res.json({ type: "failure", result: e.message })
     }
 }
+const UpdatePorfile = async (req, res, next) => {
+    try {
+        const find = await User.findByIdAndUpdate(
+            req.user,
+            { $set: { profile: req.file.path } },
+            { new: true }
+        )
+        if (find) {
+            res.json({
+                type: "success",
+                result: find
+            });
+        }
+        else {
+            res.json({
+                type: "failure",
+                result: "server error"
+            });
+        }
+    }
+    catch (e) {
+        console.log(e);
+        return res.json({ type: "failure", result: e.message })
+    }
+}
 const getSingleUser = async (req, res, next) => {
     try {
         const _id = req.body.id
@@ -482,6 +507,7 @@ const friendrequest = async (req, res, next) => {
 module.exports = {
     register,
     registerWithImage,
+    UpdatePorfile,
     signin,
     getSingleUser,
     updateStatus,

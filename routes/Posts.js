@@ -1,6 +1,5 @@
 
 const router = require("express").Router();
-const { CreateComment } = require("../controllers/commentsController")
 const {
     CreatePost,
     AddPostComment,

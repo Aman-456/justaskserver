@@ -6,8 +6,6 @@ const userSchema = new mongoose.Schema({
     name: {
         type: String,
         unique: true,
-        min: 3,
-        max: 20,
         required: true,
     },
     email: {
@@ -45,15 +43,21 @@ const userSchema = new mongoose.Schema({
     ],
     bio: {
         type: String,
-        length: 20
     },
 },
     { timestamps: true }
 )
 
+userSchema.index({
+    name: 'text',
+    bio: "text"
+})
+
 userSchema.methods.matchpass = async function (pass, password) {
     return await bcrypt.compare(pass, password)
 }
+
+
 
 userSchema.pre('save', async function (next) {
     try {
@@ -70,4 +74,5 @@ userSchema.pre('save', async function (next) {
 
 
 const User = mongoose.model('Users', userSchema)
+
 module.exports = User;

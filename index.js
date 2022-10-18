@@ -5,7 +5,7 @@ const cors = require("cors");
 const database = require("./connect");
 const userRoute = require("./routes/users");
 const postRoute = require("./routes/Posts");
-const path = require('path')
+const searchRoute = require("./routes/search")
 const bodyParser = require("body-parser")
 
 database();               // database connection
@@ -32,6 +32,7 @@ app.use(express.json());  // parses incoming api request with json payloads- mid
 app.use('/uploads', express.static('uploads'));
 app.use("/api/user", userRoute.routes);
 app.use('/api/post', postRoute);
+app.use('/api/search', searchRoute);
 
 app.listen(process.env.PORT || 5000, () => { // listens to the port
     console.log("Backend is running at port " + process.env.PORT);

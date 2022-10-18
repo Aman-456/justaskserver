@@ -323,10 +323,10 @@ const removefriend = async (req, res, next) => {
             if (removeid.friends.includes(req.body.id)) {
                 await removeid.updateOne({
                     $pull: { friends: req.body.id }
-                })
+                }, { new: true })
                 await currentUser.updateOne({
                     $pull: { friends: req.body.removeId }
-                })
+                }, { new: true })
                 console.log("here");
                 const friends = await currentUser.friends;
                 const users = await User.find().where('_id').in(friends)
@@ -402,16 +402,16 @@ const acceptfriend = async (req, res, next) => {
 
                 await acceptid.updateOne({
                     $pull: { pendingReq: req.body.id }
-                })
+                }, { new: true })
                 await acceptid.updateOne({
                     $push: { friends: req.body.id }
-                })
+                }, { new: true })
                 await currentUser.updateOne({
                     $pull: { addfriendReq: req.body.acceptid }
-                })
+                }, { new: true })
                 await currentUser.updateOne({
                     $push: { friends: req.body.acceptid }
-                })
+                }, { new: true })
                 const friends = await currentUser.addfriendReq;
                 const users = await User.find().where('_id').in(friends)
                 return res.json({

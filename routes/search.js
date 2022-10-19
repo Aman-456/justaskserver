@@ -4,13 +4,15 @@ const User = require("../modals/User")
 router.get('/', async (req, res) => {
     try {
         const { query } = req.query;
-        console.log(query);
         let posts, user
         if (query.includes("tags:")) {
-            const split = query.splice(5)
+            const split = query.slice(5)
             const tags = split.split(" ")
+            console.log(tags);
             posts = await Post.find({
-                Tags: { $in: tags }
+                'Tags': {
+                    '$in': tags
+                }
             }).populate("Author")
         }
         else {
@@ -21,7 +23,6 @@ router.get('/', async (req, res) => {
             query === "users" ? {}
                 : { $text: { $search: query } }
         )
-
         res.json({
             result: {
                 users: user,

@@ -5,9 +5,19 @@ router.get('/', async (req, res) => {
     try {
         const { query } = req.query;
         console.log(query);
-        const posts = await Post.find(
-            query === "posts" ? {} : { $text: { $search: query } }).populate("Author")
-        const user = await User.find(
+        let posts, user
+        if (query.includes("tags:")) {
+            const split = query.splice(5)
+            const tags = split.split(" ")
+            posts = await Post.find({
+                Tags: { $in: tags }
+            }).populate("Author")
+        }
+        else {
+            posts = await Post.find(
+                query === "posts" ? {} : { $text: { $search: query } }).populate("Author")
+        }
+        user = await User.find(
             query === "users" ? {}
                 : { $text: { $search: query } }
         )

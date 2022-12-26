@@ -2,6 +2,8 @@ const Posts = require("../modals/Posts")
 const SavedPosts = require("../modals/SavedPosts")
 const User = require("../modals/User")
 const mongoose = require('mongoose')
+const { getSaved } = require("../middleware/getSaved")
+
 const CreatePost = async (req, res, next) => {
     try {
         const id = req.body.Author
@@ -62,10 +64,13 @@ const
                 .populate('Author')
                 .populate("Comments.Author")
                 .populate("Comments.reply.Author")
+
             if (edit) {
                 res.json({
                     type: "success",
-                    data: edit
+                    data: {
+                        ...edit._doc,
+                    }
                 });
             }
             else {
@@ -82,13 +87,18 @@ const
 
 const GetSinglePost = async (req, res, next) => {
     try {
+
+        const saved = await SavedPosts.findOne({
+            Post: req.body.id,
+            Author: req.user
+        })
         const post = await Posts.findById(req.body.id)
             .populate('Author')
             .populate("Comments.Author")
             .populate("Comments.reply.Author")
-        console.log(post);
+
         if (post) {
-            return res.json({ type: "success", result: post })
+            return res.json({ type: "success", result: { saved, ...post?._doc } })
         }
     }
     catch (e) {
@@ -140,7 +150,7 @@ const AddtoSavedPosts = async (req, res, next) => {
         if (a) {
             const post = await Getone(req.body.id)
             return res.json({
-                type: "success", result: post
+                type: "success", result: { ...post?._doc, saved: a }
             })
         }
     }
@@ -149,6 +159,21 @@ const AddtoSavedPosts = async (req, res, next) => {
     }
 }
 
+const RemoveFromSaved = async (req, res, next) => {
+    try {
+        const saved = await SavedPosts.findOneAndDelete({ Post: req.body.id })
+        const post = await Posts.findOne({ _id: req.body.id })
+        console.log(saved, req.body.id);
+        if (saved) {
+            return res.json({
+                type: "success", result: "Removed from Saved Posts", data: post
+            })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
 
 const GetMySavedPosts = async (req, res, next) => {
     try {
@@ -626,6 +651,7 @@ module.exports = {
     GetSinglePost,
     GetMySavedPosts,
     AddtoSavedPosts,
+    RemoveFromSaved,
     GetMyAnswers,
     GetMyTopics,
     EditCommentPost,

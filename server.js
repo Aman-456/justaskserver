@@ -5,21 +5,15 @@ const cors = require("cors");
 const database = require("./connect");
 const userRoute = require("./routes/users");
 const postRoute = require("./routes/Posts");
-const NewsLetterRoute = require("./routes/newsletter");
 const searchRoute = require("./routes/search")
 const bodyParser = require("body-parser")
 
 database();               // database connection
-const corsOptions = {
-    origin: '*',
-    credentials: true,            //access-control-allow-credentials:true
-    optionSuccessStatus: 200,
-}
+app.use(cors());          // for cross orign resource sharing
 
-app.use(cors(corsOptions)) // Use this after the variable declaration
 app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*")
-    res.header("Access-Control-Allow-Headers: Content-Type, Authorization");
+    // res.header('Access-Control-Allow-Origin', "*")
     res.header('Access-Control-Allow-Headers', "*")
 
     next()
@@ -41,7 +35,6 @@ app.use('/uploads', express.static('uploads'));
 app.use("/api/user", userRoute.routes);
 app.use('/api/post', postRoute);
 app.use('/api/search', searchRoute);
-app.use('/api/newsletter', NewsLetterRoute);
 
 app.listen(process.env.PORT || 5000, () => { // listens to the port
     console.log("Backend is running at port " + process.env.PORT);

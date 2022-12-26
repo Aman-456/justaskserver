@@ -15,6 +15,7 @@ const {
     GetSinglePost,
     GetMySavedPosts,
     AddtoSavedPosts,
+    RemoveFromSaved,
     EditCommentPost,
     EditReplyCommentPost,
     DeleteCommentPost,
@@ -30,7 +31,7 @@ router.post("/", middleware.authenticator, CreatePost)
 router.get("/", GetAllPosts)
 router.get("/recent", GetRecent)
 
-router.post("/singlepost", GetSinglePost)
+router.post("/singlepost", middleware.authenticator, GetSinglePost)
 router.get("/myanswers", middleware.authenticator, GetMyAnswers)
 router.post("/otheranswers", middleware.authenticator, GetOthersAnswers)
 router.get("/mytopics", middleware.authenticator, GetMyTopics)
@@ -38,6 +39,7 @@ router.post("/othertopics", middleware.authenticator, GetOthersTopics)
 router.get("/saved", middleware.authenticator, GetMySavedPosts)
 router.post("/otherssaved", middleware.authenticator, GetOthersSaved)
 router.post("/addtosave", middleware.authenticator, AddtoSavedPosts)
+router.post("/removefromsave", middleware.authenticator, RemoveFromSaved)
 router.post("/editcomment", middleware.authenticator, EditCommentPost)
 router.post("/editreply", middleware.authenticator, EditReplyCommentPost)
 router.post("/editpost", middleware.authenticator, EditPost)

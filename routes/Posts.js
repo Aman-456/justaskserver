@@ -31,7 +31,7 @@ router.post("/", middleware.authenticator, CreatePost)
 router.get("/", GetAllPosts)
 router.get("/recent", GetRecent)
 
-router.post("/singlepost", middleware.authenticator, GetSinglePost)
+router.post("/singlepost", GetSinglePost)
 router.get("/myanswers", middleware.authenticator, GetMyAnswers)
 router.post("/otheranswers", middleware.authenticator, GetOthersAnswers)
 router.get("/mytopics", middleware.authenticator, GetMyTopics)

@@ -1,4 +1,5 @@
 const User = require('../modals/User')
+const Reporteduser = require('../modals/Report')
 const jwt = require('jsonwebtoken')
 
 const register = async (req, res, next) => {
@@ -100,6 +101,50 @@ const registerWithImage = async (req, res, next) => {
     catch (e) {
         console.log(e);
         return res.json({ type: "failure", result: e.message })
+    }
+}
+const GetAll = async (req, res, next) => {
+    try {
+        const user = await User.find({})
+        console.log(user.length);
+        if (!user) {
+            return res.json({ type: "failure", result: "No user found" });
+        }
+        res.json({ type: "success", result: user })
+    }
+    catch (e) {
+        console.log("error occured in getuser");
+        res.json({ type: "failure", result: "No user found" });
+    }
+}
+const reporteduserslist = async (req, res, next) => {
+    // Reporteduser
+    try {
+        const user = await Reporteduser.find({})
+            .populate("user")
+            .populate("reporteduser")
+        if (!user) {
+            return res.json({ type: "failure", result: "No user found" });
+        }
+        res.json({ type: "success", result: user })
+    }
+    catch (e) {
+        console.log("error occured in getuser");
+        res.json({ type: "failure", result: "No user found" });
+    }
+}
+const getSingleUserbyAdmin = async (req, res, next) => {
+    try {
+        const user = await User.findById({ _id: req.body.id })
+        console.log(user);
+        if (!user) {
+            return res.json({ type: "failure", result: "No user found" });
+        }
+        res.json({ type: "success", result: user })
+    }
+    catch (e) {
+        console.log("error occured in getuser");
+        res.json({ type: "failure", result: "No user found" });
     }
 }
 const UpdatePorfile = async (req, res, next) => {
@@ -221,6 +266,33 @@ const DELETEUSER = async (req, res, next) => {
         console.log(user);
         res.json({
             type: "success", result: `Account has been deleted `
+        });
+    }
+    catch (e) {
+        console.log(e);
+        return res.json({ type: "failure", result: e.message });
+    }
+}
+const DELETEUSERByAdmin = async (req, res, next) => {
+    try {
+        const _id = req.body.id
+        const opration = await User.updateMany({
+            $set: {
+                $pull: { friends: req.body.id },
+                $pull: { acceptfriend: req.body.id },
+                $pull: { friendrequest: req.body.id },
+            }
+        })
+        const user = await User.findByIdAndDelete(_id);
+
+
+
+        console.log(opration);
+        if (!user)
+            return res.json({ type: "failure", result: "No user found" });
+        // const { password, ...rest } = update
+        res.json({
+            type: "success", result: `Account has been deleted `, data: opration
         });
     }
     catch (e) {
@@ -504,12 +576,37 @@ const friendrequest = async (req, res, next) => {
     }
 
 }
+const repostuser = async (req, res, next) => {
+    try {
+        new Reporteduser({
+            user: req.user,
+            message: req.body.message,
+            reporteduser: req.body.id
+        })
+            .save()
+            .then(e => {
+
+                return res.json({ type: "success", result: 'User Reported!' })
+            })
+            .catch(e => {
+                return res.json({ type: "failure", result: "Couldn't Report User" })
+
+            })
+    }
+    catch (e) {
+        console.log("error");
+        res.status(500).json({ type: "failure", result: "Couldn't Report User" })
+    }
+
+}
 module.exports = {
     register,
     registerWithImage,
     UpdatePorfile,
     signin,
     getSingleUser,
+    getSingleUserbyAdmin,//admin
+    DELETEUSERByAdmin,
     updateStatus,
     VerifyEmail,
     updatePass,
@@ -520,6 +617,8 @@ module.exports = {
     acceptfriend,
     pendinglist,
     friendrequest,
-    DELETEUSER
-
+    DELETEUSER,
+    GetAll,
+    repostuser,
+    reporteduserslist
 }

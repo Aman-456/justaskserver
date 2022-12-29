@@ -69,6 +69,9 @@ router.delete('/delete',
     middleware.authenticator,
     controllers.DELETEUSER
 );
+router.post('/report',
+    middleware.authenticator,
+    controllers.repostuser
+);
 
-
-exports.routes = router;
+module.exports = router

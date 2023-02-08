@@ -3,11 +3,13 @@ const Schema = mongoose.Schema
 
 
 const MessageSchema = new mongoose.Schema({
-    conversationId: {
+    chat: {
         type: Schema.Types.ObjectId,
-        ref: "Conversation"
+        ref: "Chat"
     },
-    text: { type: String },
+    content: {
+        type: String
+    },
     sender: {
         type: Schema.Types.ObjectId,
         ref: "Users"
@@ -16,6 +18,8 @@ const MessageSchema = new mongoose.Schema({
         type: Schema.Types.ObjectId,
         ref: "Users"
     },
+    readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "Users" }],
+
 },
     { timestamps: true }
 )

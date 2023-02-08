@@ -9,14 +9,14 @@ const authenticator = async (req, res, next) => {
     try {
         obj = jwt.verify(token, process.env.SECRET_JWT)
 
+
     }
     catch (e) {
         return res.json({ type: "failure", data: obj || e, result: "You are not authorixed" })
     }
-
-
     if (token !== null && token && token !== undefined) {
         const { id } = jwt.verify(token, process.env.SECRET_JWT)
+        console.log("id", id);
         if (id) {
             req.user = id
         }

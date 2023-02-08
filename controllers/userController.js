@@ -599,7 +599,23 @@ const repostuser = async (req, res, next) => {
     }
 
 }
+const all = async (req, res, next) => {
+    try {
+        const { search } = req.query
+        const users = await User.find({
+            $and: [
+                { _id: { $ne: req.user } },
+                { $text: { $search: search, } }
+            ]
+        })
+        res.json({ type: "success", result: users })
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
 module.exports = {
+    all,
     register,
     registerWithImage,
     UpdatePorfile,

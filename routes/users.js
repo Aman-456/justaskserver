@@ -74,4 +74,8 @@ router.post('/report',
     controllers.repostuser
 );
 
+router.get('/all',
+    middleware.authenticator,
+    controllers.all
+);
 module.exports = router

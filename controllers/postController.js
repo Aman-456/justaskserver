@@ -87,7 +87,6 @@ const
 
 const GetSinglePost = async (req, res, next) => {
     try {
-
         const saved = await SavedPosts.findOne({
             Post: req.body.id,
             Author: req.user

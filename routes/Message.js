@@ -1,9 +1,14 @@
 const router = require("express").Router();
-const controllers = require("../controllers/messageController")
 
+const {
+    allMessages,
+    sendMessage,
+} = require("../controllers/messageControllers");
 
-router.post('/', controllers.addtomessages);
-router.get('/:id', controllers.getMessages);
+const { authenticator } = require("../middleware/authentication")
+
+router.route("/:chatId").get(authenticator, allMessages);
+router.route("/").post(authenticator, sendMessage);
 
 
 

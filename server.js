@@ -42,14 +42,3 @@ app.listen(process.env.PORT || 5000, () => { // listens to the port
 
 
 app.get('/', (req, res) => res.send("ok")); // for checking server
-
-
-
-// io.on("connection", (socket) => {
-//     console.log("socket connected");
-//     io.emit("firstEvent", "Hello this is test")
-//     socket.on("disconnect", () => {
-//         console.log("someone left");
-//     })
-// });
-

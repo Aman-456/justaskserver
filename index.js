@@ -88,13 +88,16 @@ io.on("connection", (socket) => {
         console.log(a);
         if (!chat.users) return console.log("chat.users not defined");
 
-        chat.users.forEach((user) => {
-
-            if (user._id !== newMessageRecieved.sender._id) {
-                console.log("sender", newMessageRecieved.sender.name);
-                console.log("rece ", user?.name);
-                socket.to(a).emit("message recieved", newMessageRecieved);
+        chat.users.forEach((user, i) => {
+            if (i < 2) {
+                if (user._id !== newMessageRecieved.sender._id) {
+                    console.log("sender", newMessageRecieved.sender.name);
+                    console.log("rece ", user?.name);
+                    socket.to(a).emit("message recieved", newMessageRecieved);
+                    return
+                }
             }
+
         });
     });
 

@@ -65,11 +65,17 @@ const
                 .populate("Comments.Author")
                 .populate("Comments.reply.Author")
 
+
+            const saved = await SavedPosts.findOne({
+                Post: req.body.id,
+                Author: req.user
+            })
             if (edit) {
                 res.json({
                     type: "success",
                     data: {
                         ...edit._doc,
+                        saved
                     }
                 });
             }
@@ -307,16 +313,20 @@ const AddPostComment = async (req, res) => {
             .populate("Comments.reply.Author")
         console.log("post", req.body);
         if (!post) {
-
-
             return res
                 .status(500)
                 .json({ type: "failure", result: "Server not Responding. Try Again" });
         }
+
+        const saved = await SavedPosts.findOne({
+            Post: req.body.id,
+            Author: req.user
+        })
+
         res.status(200).json({
             type: "success",
             result: "comment updated Successfully",
-            data: post,
+            data: { ...post._doc, saved },
         });
     } catch (error) {
         res
@@ -353,10 +363,16 @@ const AddReply = async (req, res) => {
                 .json({ type: "failure", result: "Server not Responding. Try Again" });
         }
 
+
+        const saved = await SavedPosts.findOne({
+            Post: req.body.id,
+            Author: req.user
+        })
+
         res.status(200).json({
             type: "success",
             result: "reply updated Successfully",
-            data: post,
+            data: { ...post._doc, saved },
         });
 
 
@@ -372,7 +388,6 @@ const AddReply = async (req, res) => {
 const EditCommentPost = async (req, res) => {
     try {
         console.log(req.body.id);
-        console.log(req.body);
         const post = await Posts.findOneAndUpdate(
             {
                 Comments: { $elemMatch: { _id: req.body.id } },
@@ -387,13 +402,17 @@ const EditCommentPost = async (req, res) => {
             }
         ).populate('Author')
             .populate("Comments.Author")
-            .populate("Comments.reply")
+            .populate("Comments.reply.Author")
         // console.log(postOrganizer);
+        const saved = await SavedPosts.findOne({
+            Post: post._id,
+            Author: req.user
+        })
         if (post) {
             return res.status(200).json({
                 type: "success",
                 result: "Comment edited Successfully",
-                data: post
+                data: { ...post._doc, saved }
             });
         }
     } catch (error) {
@@ -425,11 +444,16 @@ const EditReplyCommentPost = async (req, res) => {
             .populate("Comments.Author")
             .populate("Comments.reply")
 
+        const saved = await SavedPosts.findOne({
+            Post: post._id,
+            Author: req.user
+        })
+
         if (postOrganizer) {
             return res.status(200).json({
                 type: "success",
                 result: "Reply Edited Successfully",
-                data: postOrganizer,
+                data: { ...postOrganizer._doc, saved },
             })
 
         }
@@ -464,12 +488,15 @@ const DeleteReplyCommentPost = async (req, res) => {
         ).populate("Comments.Author")
             .populate("Comments.reply.Author")
             .populate('Author');
-        console.log(post);
+        const saved = await SavedPosts.findOne({
+            Post: post._id,
+            Author: req.user
+        })
         if (post) {
             return res.status(200).json({
                 type: "success",
                 result: "Reply Deleted Successfully",
-                data: post
+                data: { ...post._doc, saved }
             });
         }
     } catch (error) {
@@ -499,12 +526,17 @@ const DeleteCommentPost = async (req, res) => {
             .populate("Comments.reply.Author")
             .populate('Author')
 
+        const saved = await SavedPosts.findOne({
+            Post: post._id,
+            Author: req.user
+        })
+
         if (post) {
             const p = Getall()
             return res.status(200).json({
                 type: "success",
                 result: "Comment Deleted Successfully",
-                data: post
+                data: { ...post._doc, saved }
             });
         }
     } catch (error) {
@@ -570,10 +602,16 @@ const LikePost = async (req, res) => {
                 .status(500)
                 .json({ type: "failure", result: "Update Record error!" });
         }
+
+        const saved = await SavedPosts.findOne({
+            Post: req.body.id,
+            Author: req.user
+        })
+
         return res.status(200).json({
             type: "success",
             result: "Likes Updated Successfully",
-            data: post,
+            data: { ...post._doc, saved },
         });
 
     } catch (error) {
@@ -629,10 +667,15 @@ const UnLikePost = async (req, res) => {
                 .status(500)
                 .json({ type: "failure", result: "Update Record error!" });
         }
+
+        const saved = await SavedPosts.findOne({
+            Post: req.body.id,
+            Author: req.user
+        })
         return res.status(200).json({
             type: "success",
             result: "Likes Updated Successfully",
-            data: post,
+            data: { ...post._doc, saved },
         });
 
     } catch (error) {

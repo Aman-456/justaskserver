@@ -1,6 +1,10 @@
 const User = require('../modals/User')
 const jwt = require('jsonwebtoken')
 const nodemailer = require("nodemailer")
+var fs = require("fs");
+const path = require("path")
+var handlebars = require("handlebars");
+
 
 const register = async (req, res, next) => {
     try {
@@ -17,13 +21,103 @@ const register = async (req, res, next) => {
             password,
             profile: ""
         })
-        sendEmail(e.email, e.name, e, res);
+        sendEmail(user.email, user.name, user, res);
     }
     catch (e) {
         console.log(e);
         return res.json({ type: "failure", result: e.message })
     }
 }
+
+
+const signin = async (req, res, next) => {
+    try {
+        const user = await User.findOne({ email: req.body.email });
+        // console.log(user, req.body);
+        if (!user)
+            return res.json({ type: "failure", result: "No user found" });
+
+        else if (user && (await user.matchpass(req.body.password, user.password))) {
+            if (!user?.verify) {
+                return res.json({ type: "failure", result: "verify your email first!" })
+            }
+            const token = jwt.sign(
+                { id: user._id },
+                process.env.SECRET_JWT,
+            )
+
+            const { password, ...rest } = user._doc
+
+            res.json({ type: "success", result: { ...rest, token } })
+        }
+        else {
+            return res.json({ type: "failure", result: "Wrong Credentials" });
+        }
+    }
+    catch (e) {
+        console.log(e);
+        return res.json({ type: "failure", result: "Internal Server Error" });
+
+    }
+}
+const registerWithImage = async (req, res, next) => {
+    try {
+        const email = req.body.email
+        const find = await User.findOne({ email })
+        if (find) return res.json({
+            type: "failure",
+            result: "Email already exist"
+        });
+        const user = new User({
+            name: req.body.name,
+            email: req.body.email,
+            password: req.body.password,
+            profile: req.body.file
+        })
+        sendEmail(user.email, user.name, user, res);
+    }
+    catch (e) {
+        console.log(e);
+        return res.json({ type: "failure", result: e.message })
+    }
+}
+
+const UpdatePorfile = async (req, res, next) => {
+    try {
+        const find = await User.findByIdAndUpdate(
+            req.user,
+            { $set: { profile: req.file.path } },
+            { new: true }
+        )
+        if (find) {
+            res.json({
+                type: "success",
+                result: find
+            });
+        }
+        else {
+            res.json({
+                type: "failure",
+                result: "server error"
+            });
+        }
+    }
+    catch (e) {
+        console.log(e);
+        return res.json({ type: "failure", result: e.message })
+    }
+}
+// user signup verify
+var readHTMLFile = function (path, callback) {
+    fs.readFile(path, { encoding: "utf-8" }, function (err, html) {
+        if (err) {
+            callback(err);
+            throw err;
+        } else {
+            callback(null, html);
+        }
+    });
+};
 async function sendEmail(email, name, user, res) {
     try {
         const transporter = await nodemailer.createTransport({
@@ -82,101 +176,9 @@ async function sendEmail(email, name, user, res) {
         );
     } catch (error) {
         console.log(error + "error");
+        return res.json({ type: "failure", result: error.message })
     }
 }
-
-const signin = async (req, res, next) => {
-    try {
-        const user = await User.findOne({ email: req.body.email });
-        // console.log(user, req.body);
-        if (!user)
-            return res.json({ type: "failure", result: "No user found" });
-
-        else if (user && (await user.matchpass(req.body.password, user.password))) {
-
-            const token = jwt.sign(
-                { id: user._id },
-                process.env.SECRET_JWT,
-            )
-
-            const { password, ...rest } = user._doc
-
-            res.json({ type: "success", result: { ...rest, token } })
-        }
-        else {
-            return res.json({ type: "failure", result: "Wrong Credentials" });
-        }
-    }
-    catch (e) {
-        console.log(e);
-        return res.json({ type: "failure", result: "Internal Server Error" });
-
-    }
-}
-const registerWithImage = async (req, res, next) => {
-    try {
-        const email = req.body.email
-        const find = await User.findOne({ email })
-        if (find) return res.json({
-            type: "failure",
-            result: "Email already exist"
-        });
-        const user = new User({
-            name: req.body.name,
-            email: req.body.email,
-            password: req.body.password,
-            profile: req.body.file
-        })
-        user.save()
-            .then(e => {
-                return res.json({
-                    type: "success",
-                    result: {
-                        name: e.name,
-                        email: e.email,
-                        profile: e.profile,
-                    }
-                });
-            })
-            .catch(e => {
-                console.log(e);
-                if (e.code === 11000)
-                    return res.json({ type: "failure", result: "duplicate email or name!" });
-                return res.json({ type: "failure", result: "server error" });
-            })
-    }
-    catch (e) {
-        console.log(e);
-        return res.json({ type: "failure", result: e.message })
-    }
-}
-
-const UpdatePorfile = async (req, res, next) => {
-    try {
-        const find = await User.findByIdAndUpdate(
-            req.user,
-            { $set: { profile: req.file.path } },
-            { new: true }
-        )
-        if (find) {
-            res.json({
-                type: "success",
-                result: find
-            });
-        }
-        else {
-            res.json({
-                type: "failure",
-                result: "server error"
-            });
-        }
-    }
-    catch (e) {
-        console.log(e);
-        return res.json({ type: "failure", result: e.message })
-    }
-}
-// user signup verify
 const Verify = async (req, res) => {
     const Id = req.query.token;
     var user = await User.findOne({ _id: Id });
@@ -266,6 +268,7 @@ async function sendOTP(email, name, user, res) {
 
     } catch (error) {
         console.log(error + "error");
+        return res.json({ type: "failure", result: error.message })
     }
 }
 const verifyOTP = async (req, res) => {
@@ -279,7 +282,7 @@ const verifyOTP = async (req, res) => {
     if (now > new Date(data.expireTime)) {
         return res.status(401).json({ type: "failure", result: "OTP has been expired" });
     } else {
-        if (otp === data.otp) {
+        if (otp == data.otp) {
             res
                 .status(200)
                 .json({ type: "success", result: "OTP has been verified" });
@@ -290,9 +293,8 @@ const verifyOTP = async (req, res) => {
 };
 
 const changePassword = async (req, res) => {
-    console.log("OTP" + req.body.email + req.body.password);
-    const user = await Customer.findOne({ email: req.body.email });
-    user.password = await Customer.CreateHash(req.body.password);
+    const user = await User.findOne({ email: req.body.email });
+    user.password = req.body.password;
     user
         .save()
         .then(() => {

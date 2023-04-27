@@ -1,5 +1,6 @@
 const Posts = require("../modals/Posts")
 const User = require("../modals/User")
+const Saved = require("../modals/SavedPosts")
 
 const CreatePost = async (req, res, next) => {
     try {
@@ -60,17 +61,17 @@ const EditPost = async (req, res, next) => {
             .populate('Author')
             .populate("Comments.Author")
             .populate("Comments.reply.Author")
-
-
-        // const saved = await SavedPosts.findOne({
-        //     Post: req.body.id,
-        //     Author: req.user
-        // })
         if (edit) {
+            const saved = await Saved.findOne({
+                Author: req.user,
+                Post: req.body.id
+            })
+
             res.json({
                 type: "success",
                 data: {
                     ...edit._doc,
+                    saved: saved ? true : false
                     // saved
                 }
             });
@@ -96,7 +97,8 @@ const GetSinglePost = async (req, res, next) => {
             .populate("Comments.reply.Author")
 
         if (post) {
-            return res.json({ type: "success", result: { ...post?._doc } })
+            const saved = await Saved.findOne({ Author: req.user, Post: req.body.id })
+            return res.json({ type: "success", result: { ...post?._doc, saved: saved ? true : false } })
         }
     }
     catch (e) {
@@ -150,14 +152,434 @@ const GetAllPosts = async (req, res, next) => {
     }
 }
 
+const LikePost = async (req, res) => {
+    try {
+        let post
+
+        if (req.body.type === "like") {
+            post = await Posts.findOneAndUpdate(
+                { _id: req.body.id },
+                {
+                    $inc: { 'Likes.count': 1 },
+                    $addToSet: {
+                        'Likes.liked': {
+                            id: req.user,
+                            type: "like"
+                        }
+                    }
+                },
+                { new: true }
+            ).populate("Comments.Author")
+                .populate("Comments.reply.Author")
+                .populate('Author')
+        }
+        else if (req.body.type === "unlike") {
+            post = await Posts.findOneAndUpdate(
+                { _id: req.body.id },
+                {
+                    $inc: { 'Likes.count': -1 },
+                    $pull: { 'Likes.liked': { id: req.user } }
+                },
+                { new: true }
+            ).populate("Comments.Author")
+                .populate("Comments.reply.Author")
+                .populate('Author')
+
+        }
+
+
+        if (!post) {
+            res
+                .status(500)
+                .json({ type: "failure", result: "Update Record error!" });
+        }
+        const saved = await Saved.findOne({
+            Author: req.user,
+            Post: req.body.id
+        })
+        return res.status(200).json({
+            type: "success",
+            result: "Likes Updated Successfully",
+            data: { ...post._doc, saved: saved ? true : false },
+        });
+
+    } catch (error) {
+        console.log(error);
+        res
+            .status(500)
+            .json({ type: "failure", result: "Server not Responding. Try Again" });
+    }
+};
+
+const UnLikePost = async (req, res) => {
+    try {
+        let post = await Posts.find({ Likes: { $elemMatch: { id: req.user } } })
+
+        if (post) {
+
+            if (req.body.type === "like") {
+                post = await Posts.findOneAndUpdate(
+                    { _id: req.body.id },
+                    {
+                        $inc: { 'Likes.count': -1 },
+                        $addToSet: { 'Likes.liked': { id: req.user, type: "unlike" } }
+                    },
+                    { new: true }
+                ).populate("Comments.Author")
+                    .populate("Comments.reply.Author")
+                    .populate('Author')
+            }
+            else if (req.body.type === "unlike") {
+                post = await Posts.findOneAndUpdate(
+                    { _id: req.body.id },
+                    {
+                        $inc: { 'Likes.count': 1 },
+                        $pull: { 'Likes.liked': { id: req.user, } }
+
+                    },
+                    { new: true }
+                ).populate("Comments.Author")
+                    .populate("Comments.reply.Author")
+                    .populate('Author')
+
+            }
+
+        }
+        else {
+            post = await Posts.find({ _id: req.body.id })
+                .populate('Author')
+                .populate("Comments.Author")
+                .populate("Comments.reply.Author")
+        }
+        if (!post) {
+            res
+                .status(500)
+                .json({ type: "failure", result: "Update Record error!" });
+        }
+        const saved = await Saved.findOne({
+            Author: req.user,
+            Post: req.body.id
+        })
+        return res.status(200).json({
+            type: "success",
+            result: "Likes Updated Successfully",
+            data: { ...post._doc, saved: saved ? true : false },
+        });
+
+    } catch (error) {
+        console.log(error);
+        res
+            .status(500)
+            .json({ type: "failure", result: "Server not Responding. Try Again" });
+    }
+};
+
+const AddPostComment = async (req, res) => {
+    try {
+        var data = {
+            Body: req.body.body,
+            Author: req.user,
+        };
+
+        const post = await Posts.findByIdAndUpdate(
+            req.body.id,
+            { $push: { Comments: data } },
+            { new: true }
+        )
+            .populate('Author')
+            .populate("Comments.Author")
+            .populate("Comments.reply.Author")
+        if (!post) {
+
+
+            return res
+                .status(500)
+                .json({ type: "failure", result: "Server not Responding. Try Again" });
+        }
+        const saved = await Saved.findOne({
+            Author: req.user,
+            Post: req.body.id
+        })
+        res.status(200).json({
+            type: "success",
+            result: "comment updated Successfully",
+            data: { ...post._doc, saved: saved ? true : false },
+        });
+    } catch (error) {
+        res
+            .status(500)
+            .json({ type: "failure", result: "Server not Responding. Try Again" });
+    }
+};
+
+const AddReply = async (req, res) => {
+    try {
+        var data = {
+            Body: req.body.body,
+            Author: req.user
+        };
+        const post = await Posts.findOneAndUpdate(
+            {
+                Comments: { $elemMatch: { _id: req.body.id } }, //comment id
+            },
+            {
+                $push: { "Comments.$.reply": data, },
+            },
+            { new: true }
+
+        )
+            .populate('Author')
+            .populate("Comments.Author")
+            .populate("Comments.reply.Author")
+        if (!post) {
+            return res
+                .status(500)
+                .json({ type: "failure", result: "Server not Responding. Try Again" });
+        }
+        const saved = await Saved.findOne({
+            Author: req.user,
+            Post: req.body.id
+        })
+        res.status(200).json({
+            type: "success",
+            result: "reply updated Successfully",
+            data: { ...post._doc, saved: saved ? true : false },
+        });
+
+
+    }
+    catch (error) {
+        console.log(error.message);
+        res
+            .status(500)
+            .json({ type: "failure", result: "Server not Responding. Try Again" });
+    }
+};
+
+const EditCommentPost = async (req, res) => {
+    try {
+        const post = await Posts.findOneAndUpdate(
+            {
+                Comments: { $elemMatch: { _id: req.body.id } },
+            },
+            {
+                $set: {
+                    "Comments.$.Body": req.body.body,
+                },
+            },
+            {
+                new: true
+            }
+        ).populate('Author')
+            .populate("Comments.Author")
+            .populate("Comments.reply.Author")
+        // console.log(postOrganizer);
+        if (post) {
+            const saved = await Saved.findOne({
+                Author: req.user,
+                Post: req.body.id
+            })
+            return res.status(200).json({
+                type: "success",
+                result: "Comment edited Successfully",
+                data: { ...post._doc, saved: saved ? true : false },
+            });
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ type: "failure", result: "Server Not Responding" });
+    }
+};
+
+const EditReplyCommentPost = async (req, res) => {
+    try {
+        const postOrganizer = await Posts.findOneAndUpdate(
+            {
+                "Comments.reply": { $elemMatch: { _id: req.body.id } },
+            },
+            {
+                $set: {
+                    "Comments.$[].reply.$[reply].Body": req.body.body,
+                },
+
+            },
+            {
+                arrayFilters: [{ "reply._id": req.body.id }],
+                new: true
+            },
+
+        ).populate('Author')
+            .populate("Comments.Author")
+            .populate("Comments.reply.Author")
+
+        if (postOrganizer) {
+            const saved = await Saved.findOne({
+                Author: req.user,
+                Post: req.body.id
+            })
+            return res.status(200).json({
+                type: "success",
+                result: "Reply Edited Successfully",
+                data: { ...postOrganizer._doc, saved: saved ? true : false },
+            })
+
+        }
+        else {
+            return res.status(404).json({
+                type: "failure",
+                result: "Can't Find Comment",
+            });
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ type: "failure", result: "Server Not Responding" });
+    }
+};
+
+const DeleteReplyCommentPost = async (req, res) => {
+    try {
+        const post = await Posts.findOneAndUpdate(
+            {
+                "Comments.reply": { $elemMatch: { _id: req.body.id } },
+            },
+            {
+                $pull: {
+                    "Comments.$.reply": {
+                        _id: req.body.id,
+                    },
+                }
+            },
+            {
+                new: true
+            }
+        ).populate('Author')
+            .populate("Comments.Author")
+            .populate("Comments.reply.Author")
+        if (post) {
+            const saved = await Saved.findOne({
+                Author: req.user,
+                Post: req.body.id
+            })
+            return res.status(200).json({
+                type: "success",
+                result: "Reply Deleted Successfully",
+                data: { ...post._doc, saved: saved ? true : false },
+            });
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ type: "failure", result: "Server Not Responding" });
+    }
+};
+
+const DeleteCommentPost = async (req, res) => {
+    try {
+        const post = await Posts.findOneAndUpdate(
+            {
+                Comments: { $elemMatch: { _id: req.body.id } },
+            },
+            {
+                $pull: {
+                    Comments: {
+                        _id: req.body.id,
+                    },
+                },
+            },
+            {
+                new: true
+            }
+        )
+            .populate("Comments.Author")
+            .populate("Comments.reply.Author")
+            .populate('Author')
+
+        if (post) {
+            const saved = await Saved.findOne({
+                Author: req.user,
+                Post: req.body.id
+            })
+            return res.status(200).json({
+                type: "success",
+                result: "Comment Deleted Successfully",
+                data: { ...post._doc, saved: saved ? true : false },
+            });
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ type: "failure", result: "Server Not Responding" });
+    }
+};
+
+const DeletePost = async (req, res) => {
+    try {
+        const post = await Posts.findOneAndDelete({ _id: req.body.id });
+        if (post) {
+            await Saved.findOneAndDelete({
+                Author: req.user,
+                Post: req.body.id
+            })
+            return res.status(200).json({
+                type: "success",
+                result: "Post Deleted Successfully",
+            });
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ type: "failure", result: "Server Not Responding" });
+    }
+};
+
+const AddtoSavedPosts = async (req, res, next) => {
+    try {
+        const p = new Saved({
+            Author: req.user,
+            Post: req.body.id
+        })
+        const a = await p.save()
+        if (a) {
+            const post = await Posts.findOne({ _id: req.body.id }).populate("Author")
+            return res.json({
+                type: "success", data: { ...post?._doc, saved: true }
+            })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
+
+const RemoveFromSaved = async (req, res, next) => {
+    try {
+        const saved = await Saved.findOneAndDelete({ Post: req.body.id, Author: req.user })
+        const post = await Posts.findOne({ _id: req.body.id }).populate("Author")
+        if (saved) {
+            return res.json({
+                type: "success", data: { ...post._doc, saved: false }
+            })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
+
 module.exports = {
     CreatePost,
-
     GetSinglePost,
-
     GetMyAnswers,
-
     GetOthersAnswers,
     GetAllPosts,
-    EditPost
+    EditPost,
+    LikePost,
+    UnLikePost,
+    AddPostComment,
+    AddReply,
+    EditCommentPost,
+    EditReplyCommentPost,
+    DeleteCommentPost,
+    DeleteReplyCommentPost,
+    EditPost,
+    DeletePost,
+    AddtoSavedPosts,
+    RemoveFromSaved
 }

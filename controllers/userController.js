@@ -1,6 +1,6 @@
 const User = require('../modals/User')
-const Reporteduser = require('../modals/Report')
 const jwt = require('jsonwebtoken')
+const nodemailer = require("nodemailer")
 
 const register = async (req, res, next) => {
     try {
@@ -17,26 +17,74 @@ const register = async (req, res, next) => {
             password,
             profile: ""
         })
-        user.save().then(e => {
-            res.json({
-                type: "success",
-                result: {
-                    name: e.name,
-                    email: e.email,
-                    profile: e.profile
-                }
-            });
-        })
-            .catch(e => {
-                res.json({ type: "failure", result: "server error" });
-            })
-
+        sendEmail(e.email, e.name, e, res);
     }
     catch (e) {
         console.log(e);
         return res.json({ type: "failure", result: e.message })
     }
 }
+async function sendEmail(email, name, user, res) {
+    try {
+        const transporter = await nodemailer.createTransport({
+            host: "smtp.gmail.com",
+            port: 465,
+            secure: true,
+            auth: {
+                user: `${process.env.EMAIL_ADDRESS}`,
+                pass: `${process.env.APP_PASS || process.env.EMAIL_PASSWORD}`,
+            },
+        });
+        const URL = `http://${process.env.HOST}:${process.env.PORT}/api/user/verify?token=${user._id} `;
+        readHTMLFile(
+            "./templates/emailverification.html",
+            async function (err, html) {
+                var template = handlebars.compile(html);
+                var replacements = {
+                    name: user.name,
+                    link: URL,
+                };
+                var htmlToSend = template(replacements);
+
+                const mailOptions = {
+                    from: `${process.env.EMAIL_ADDRESS} `,
+                    to: email,
+                    subject: "Please confirm account",
+                    html: htmlToSend,
+                };
+
+                await transporter.verify();
+
+                //Send Email
+                transporter.sendMail(mailOptions, async (err, response) => {
+                    if (err) {
+                        res.status(500).json({ type: "failure", result: "Server Not Responding" });
+                        return;
+                    } else {
+                        await user.save().then(e => {
+                            return res.status(200).json({
+                                type: "success",
+                                result: "Please verify your email!",
+                            });
+                        }).catch(e => {
+                            if (e.code === 11000)
+                                return res.json({ type: "failure", result: "duplicate email or name!" });
+                            else
+                                res.status(200).json({
+                                    type: "failue",
+                                    result: "Customer Registeration Error",
+                                });
+                        })
+
+                    }
+                });
+            }
+        );
+    } catch (error) {
+        console.log(error + "error");
+    }
+}
+
 const signin = async (req, res, next) => {
     try {
         const user = await User.findOne({ email: req.body.email });
@@ -69,84 +117,40 @@ const registerWithImage = async (req, res, next) => {
     try {
         const email = req.body.email
         const find = await User.findOne({ email })
-        find && res.json({
+        if (find) return res.json({
             type: "failure",
             result: "Email already exist"
         });
-
         const user = new User({
             name: req.body.name,
             email: req.body.email,
             password: req.body.password,
-            profile: req.file.path
+            profile: req.body.file
         })
-        const save = await user.save();
-        if (save) {
-            res.json({
-                type: "success",
-                result: {
-                    name: save.name,
-                    email: save.email,
-                    profile: save.profile
-                }
-            });
-        }
-        else {
-            res.json({
-                type: "failure",
-                result: "server error"
-            });
-        }
+        user.save()
+            .then(e => {
+                return res.json({
+                    type: "success",
+                    result: {
+                        name: e.name,
+                        email: e.email,
+                        profile: e.profile,
+                    }
+                });
+            })
+            .catch(e => {
+                console.log(e);
+                if (e.code === 11000)
+                    return res.json({ type: "failure", result: "duplicate email or name!" });
+                return res.json({ type: "failure", result: "server error" });
+            })
     }
     catch (e) {
         console.log(e);
         return res.json({ type: "failure", result: e.message })
     }
 }
-const GetAll = async (req, res, next) => {
-    try {
-        const user = await User.find({})
-        console.log(user.length);
-        if (!user) {
-            return res.json({ type: "failure", result: "No user found" });
-        }
-        res.json({ type: "success", result: user })
-    }
-    catch (e) {
-        console.log("error occured in getuser");
-        res.json({ type: "failure", result: "No user found" });
-    }
-}
-const reporteduserslist = async (req, res, next) => {
-    // Reporteduser
-    try {
-        const user = await Reporteduser.find({})
-            .populate("user")
-            .populate("reporteduser")
-        if (!user) {
-            return res.json({ type: "failure", result: "No user found" });
-        }
-        res.json({ type: "success", result: user })
-    }
-    catch (e) {
-        console.log("error occured in getuser");
-        res.json({ type: "failure", result: "No user found" });
-    }
-}
-const getSingleUserbyAdmin = async (req, res, next) => {
-    try {
-        const user = await User.findById({ _id: req.body.id })
-        console.log(user);
-        if (!user) {
-            return res.json({ type: "failure", result: "No user found" });
-        }
-        res.json({ type: "success", result: user })
-    }
-    catch (e) {
-        console.log("error occured in getuser");
-        res.json({ type: "failure", result: "No user found" });
-    }
-}
+
 const UpdatePorfile = async (req, res, next) => {
     try {
         const find = await User.findByIdAndUpdate(
@@ -172,469 +176,145 @@ const UpdatePorfile = async (req, res, next) => {
         return res.json({ type: "failure", result: e.message })
     }
 }
-const getSingleUser = async (req, res, next) => {
-    try {
-        const _id = req.body.id
+// user signup verify
+const Verify = async (req, res) => {
+    const Id = req.query.token;
+    var user = await User.findOne({ _id: Id });
+    if (user) {
+        if (user.verify == true) {
+            return res.redirect(`${"http://localhost:3000"}`)
+        }
+        user.verify = true;
+        await user.save()
+        return res.sendFile(
+            path.join(__dirname + "../../templates/emailverified.html")
+        );
 
-        var button = ""
-        const current = req.body.current
-        const user = await User.findById(_id)
-        if (!user) {
-            return res.json({ type: "failure", result: "No user found" });
+    }
+    else {
+        res.json({ type: "failure", result: "Server Not Responding" });
+    }
+
+};
+const OTP = async (req, res) => {
+    try {
+        var user = await User.findOne({ email: req.body.email });
+        if (user) {
+            sendOTP(user.email, user.name, user, res);
+        } else {
+            res.status(401).json({ type: "failure", result: "Email Does not Exist" });
         }
-        console.log("user", user);
-        if (user.friends.includes(current)) {
-            button = "Remove"
+    } catch (error) {
+        console.log(error + "error");
+        res.status(500).json({ type: "failure", result: "Server Not Responding" });
+    }
+};
+async function sendOTP(email, name, user, res) {
+    try {
+        var otp = Math.floor(1000 + Math.random() * 9000);
+        const now = new Date();
+        const expiration_time = new Date(now.getTime() + 10 * 60000);
+
+        user.otp = otp;
+        user.expireTime = expiration_time
+        const u = await user.save();
+        if (!u) {
+            return res
+                .status(500)
+                .json({ type: "failure", result: "Server Not Responding" });
         }
-        else if (user.addfriendReq.includes(current)) {
-            button = "Cancel"
-        }
+
         else {
-            button = "Add"
-        }
-
-        const { password, ...rest } = user._doc
-        res.json({ type: "success", result: { ...rest }, button })
-    }
-    catch (e) {
-        console.log("error occured in getuser");
-        res.json({ type: "failure", result: "No user found" });
-    }
-}
-const updateStatus = async (req, res, next) => {
-    try {
-        const _id = req.body.id
-        const user = await User.findOne({ _id });
-        !user && res.json({ type: "failure", result: "No user found" });
-        const update = await User.findByIdAndUpdate(_id, { $set: req.body }, { new: true })
-        const { password, ...rest } = update._doc
-        res.json({ type: "success", result: { ...rest }, updated: "true" });
-    }
-    catch (e) {
-        console.log(e);
-    }
-}
-const VerifyEmail = async (req, res, next) => {
-    try {
-        const email = req.body.email
-        const user = await User.findOne({ email });
-        !user && res.json({ type: "failure", result: "No user found" });
-        res.json({ type: "success" });
-    }
-    catch (e) {
-        console.log(e);
-    }
-}
-const updatePass = async (req, res, next) => {
-    try {
-        const email = req.body.email
-        const pass = req.body.password
-        const user = await User.findOne({ email });
-        !user && res.json({ type: "failure", result: "No user found" });
-        user.password = pass
-        user
-            .save()
-            .then(() => {
-                const { password, ...rest } = user._doc
-                console.log("rest", rest);
-                res.status(200).json({
-                    type: "success",
-                    result: { rest },
-                    updated: "true"
-                });
-            })
-            .catch(() => {
-                res
-                    .status(500)
-                    .json({ type: "failure", result: "Server Not Responding" });
-                return;
+            const transporter = nodemailer.createTransport({
+                host: "smtp.gmail.com",
+                port: 465,
+                secure: true,
+                auth: {
+                    user: `${process.env.EMAIL_ADDRESS} `,
+                    pass: `${process.env.APP_PASS || process.env.EMAIL_PASSWORD} `,
+                },
             });
 
-    }
-    catch (e) {
-        console.log("error", e);
+            const mailOptions = {
+                from: `${process.env.EMAIL_ADDRESS} `,
+                to: `${email} `,
+                subject: "OTP: For Change Password",
+                text:
+                    `Dear ${name} \, \n\n` +
+                    "OTP for Change Password is : \n\n" +
+                    `${otp} \n\n` +
+                    "This is a auto-generated email. Please do not reply to this email.\n\n",
+            };
+
+            await transporter.verify();
+
+            //Send Email
+            transporter.sendMail(mailOptions, (err, response) => {
+
+                if (err) {
+                    return res
+                        .status(500)
+                        .json({ type: "failure", result: "Server Not Responding" });
+                } else {
+                    res.status(200).json({
+                        type: "success",
+                        result: "OTP has been sent",
+                    });
+                }
+            });
+        }
+
+    } catch (error) {
+        console.log(error + "error");
     }
 }
-const DELETEUSER = async (req, res, next) => {
-    try {
-        const _id = req.user
-        console.log(req.user);
-        const user = await User.findByIdAndDelete(_id);
-        if (!user)
-            return res.json({ type: "failure", result: "No user found" });
-        // const { password, ...rest } = update
-        console.log(user);
-        res.json({
-            type: "success", result: `Account has been deleted `
-        });
+const verifyOTP = async (req, res) => {
+    if (!req.body.number || !req.body.email) {
+        return res.json({ type: "failure", result: "either email or otp is undefined" })
     }
-    catch (e) {
-        console.log(e);
-        return res.json({ type: "failure", result: e.message });
+    var otp = req.body.number;
+    const data = await User.findOne({ email: req.body.email });
+
+    const now = new Date();
+    if (now > new Date(data.expireTime)) {
+        return res.status(401).json({ type: "failure", result: "OTP has been expired" });
+    } else {
+        if (otp === data.otp) {
+            res
+                .status(200)
+                .json({ type: "success", result: "OTP has been verified" });
+        } else {
+            res.status(401).json({ type: "failure", result: "OTP is incorrect" });
+        }
     }
-}
-const DELETEUSERByAdmin = async (req, res, next) => {
-    try {
-        const _id = req.body.id
-        const opration = await User.updateMany({
-            $set: {
-                $pull: { friends: req.body.id },
-                $pull: { acceptfriend: req.body.id },
-                $pull: { friendrequest: req.body.id },
-            }
+};
+
+const changePassword = async (req, res) => {
+    console.log("OTP" + req.body.email + req.body.password);
+    const user = await Customer.findOne({ email: req.body.email });
+    user.password = await Customer.CreateHash(req.body.password);
+    user
+        .save()
+        .then(() => {
+            res.status(200).json({
+                type: "success",
+                result: "Password has been changed",
+            });
         })
-        const user = await User.findByIdAndDelete(_id);
-
-
-
-        console.log(opration);
-        if (!user)
-            return res.json({ type: "failure", result: "No user found" });
-        // const { password, ...rest } = update
-        res.json({
-            type: "success", result: `Account has been deleted `, data: opration
+        .catch((error) => {
+            res
+                .status(500)
+                .json({ type: "failure", result: "Server Not Responding" });
+            return;
         });
-    }
-    catch (e) {
-        console.log(e);
-        return res.json({ type: "failure", result: e.message });
-    }
-}
-const follow = async (req, res, next) => {
-    if (req.body.usertofollowid !== req.body.id) {
-        try {
-            const usertofollowid = await User.findById(req.body.usertofollowid);
-            const currentUser = await User.findById(req.body.id);
-
-            if (!usertofollowid)
-                res.json({
-                    type: "failure",
-                    result: "No user found"
-                });
-
-            if (
-                !(usertofollowid.friends.includes(req.body.id)) &&
-                !(usertofollowid.addfriendReq.includes(req.body.id))
-            ) {
-                await usertofollowid.updateOne({
-                    $push: { addfriendReq: req.body.id }
-                })
-                await currentUser.updateOne({
-                    $push: { pendingReq: req.body.usertofollowid }
-                })
-                res.json({
-                    type: "success", result: `Request Sent`
-                })
-            }
-            else res.json({
-                type: "failure", result:
-                    (usertofollowid.friends.includes(req.body.id))
-                        ? `You are already friend with this account`
-                        : `Request already sent to this account this account`
-
-
-            });
-        }
-        catch (e) {
-            res.json({
-                type: "failure", result: `Can't Find the user or can't follow the user or user not found`
-            });
-        }
-    }
-    else res.json({
-        type: "failure", result: `You can't follow your self`
-    });
-}
-const unfollow = async (req, res, next) => {
-    if (req.body.id !== req.body.usertounfollowid) {
-        try {
-            const unfollowid = await User.findById(req.body.usertounfollowid);
-            const currentUser = await User.findById(req.body.id);
-            if (!unfollowid)
-                return res.json({
-                    type: "failure",
-                    result: "No user found"
-                });
-            if (unfollowid.addfriendReq.includes(req.body.id)) {
-
-                await unfollowid.updateOne({
-                    $pull: { addfriendReq: req.body.id }
-                })
-                await currentUser.updateOne({
-                    $pull: { pendingReq: req.body.usertounfollowid }
-                })
-                res.json({
-                    type: "success", result: `Request Cancelled`
-                })
-            }
-            else res.json({
-                type: "failure", result: `You haven't send request to this account`
-            });
-        }
-        catch (e) {
-
-            res.json({
-                type: "failure", result: `Can't Find the user or can't unfollow the user or user not found`
-            });
-        }
-    }
-    else res.json({
-        type: "failure", result: `Server Error`
-    });
-}
-const removefriend = async (req, res, next) => {
-    if (req.body.id !== req.body.removeId) {
-        try {
-            const removeid = await User.findById(req.body.removeId);
-            const currentUser = await User.findById(req.body.id);
-            if (!removeid)
-                res.json({
-                    type: "failure",
-                    result: "No user found"
-                });
-            if (removeid.friends.includes(req.body.id)) {
-                await removeid.updateOne({
-                    $pull: { friends: req.body.id }
-                }, { new: true })
-                await currentUser.updateOne({
-                    $pull: { friends: req.body.removeId }
-                }, { new: true })
-                console.log("here");
-                const friends = await currentUser.friends;
-                const users = await User.find().where('_id').in(friends)
-
-                res.json({
-                    type: "success", result: `Friend Removed`,
-                    data: users
-                })
-            }
-
-            else if (
-                removeid.pendingReq.includes(req.body.id) ||
-                currentUser.addfriendReq.includes(req.body.removeId)
-            ) {
-                console.log("fisrt2");
-
-                await removeid.updateOne({
-                    $pull: { pendingReq: req.body.id }
-                })
-                await currentUser.updateOne({
-                    $pull: { addfriendReq: req.body.removeId },
-                }, { new: true })
-                const friends = await currentUser.addfriendReq;
-                const users = await User.find().where('_id').in(friends)
-                res.json({
-                    type: "success", result: `Friend Removed`
-                    , data: users
-
-                })
-            }
-            else if (removeid.addfriendReq.includes(req.body.id)) {
-                console.log("fisrt3");
-
-                await removeid.updateOne({
-                    $pull: { addfriendReq: req.body.id }
-                })
-                await currentUser.updateOne({
-                    $pull: { pendingReq: req.body.removeId }
-                })
-                const friends = await currentUser.pendingReq;
-                const users = await User.find().where('_id').in(friends)
-                res.json({
-                    type: "success", result: `Friend Removed`,
-                    data: users
-                })
-            }
-            else res.json({
-                type: "failure", result: `You aren't friends with this user`
-            });
-        }
-        catch (e) {
-            console.log(e.message);
-            res.json({
-                type: "failure", result: `Can't Find the user or can't unfollow the user or user not found`
-            });
-        }
-    }
-    else res.json({
-        type: "failure", result: `Server Error`
-    });
-}
-const acceptfriend = async (req, res, next) => {
-    if (req.body.id !== req.body.acceptid) {
-        try {
-            const acceptid = await User.findById(req.body.acceptid);
-            const currentUser = await User.findById(req.body.id);
-            if (!acceptid)
-                res.json({
-                    type: "failure",
-                    result: "No user found"
-                });
-            if (acceptid.pendingReq.includes(req.body.id)) {
-
-                await acceptid.updateOne({
-                    $pull: { pendingReq: req.body.id }
-                }, { new: true })
-                await acceptid.updateOne({
-                    $push: { friends: req.body.id }
-                }, { new: true })
-                await currentUser.updateOne({
-                    $pull: { addfriendReq: req.body.acceptid }
-                }, { new: true })
-                await currentUser.updateOne({
-                    $push: { friends: req.body.acceptid }
-                }, { new: true })
-                const friends = await currentUser.addfriendReq;
-                const users = await User.find().where('_id').in(friends)
-                return res.json({
-                    type: "success", result: `Friend Request Accpeted`,
-                    data: users
-                })
-            }
-
-            else res.json({
-                type: "failure", result: `You aren't friends with this user`
-            });
-        }
-        catch (e) {
-
-            res.json({
-                type: "failure", result: `Can't Find the user or can't unfollow the user or user not found`
-            });
-        }
-    }
-    else res.json({
-        type: "failure", result: `Server Error`
-    });
-}
-const friendList = async (req, res, next) => {
-    try {
-        const id = await User.findById(req.body.id);
-        const friends = await id.friends;
-
-        if (friends == [])
-            res.json({
-                type: "failure",
-                result: "No users found"
-            });
-        const users = await User.find().where('_id').in(friends)
-
-        res.json({ type: "success", list: users })
-    }
-    catch (e) {
-        console.log("error");
-        res.json({
-            type: "failure",
-            result: `Can't Find the users`
-        });
-    }
-
-}
-const pendinglist = async (req, res, next) => {
-    try {
-        const id = await User.findById(req.body.id);
-        const friends = await id.pendingReq;
-
-        if (friends == [])
-            res.json({
-                type: "failure",
-                result: "No users found"
-            });
-        const users = await User.find().where('_id').in(friends)
-
-        res.json({ type: "success", list: users })
-    }
-    catch (e) {
-        console.log("error");
-        res.json({
-            type: "failure",
-            result: `Can't Find the users`
-        });
-    }
-
-}
-const friendrequest = async (req, res, next) => {
-    try {
-        const id = await User.findById(req.body.id);
-        const friends = await id.addfriendReq;
-
-        if (friends == [])
-            res.json({
-                type: "failure",
-                result: "No users found"
-            });
-        const users = await User.find().where('_id').in(friends)
-
-        res.json({ type: "success", list: users })
-    }
-    catch (e) {
-        console.log("error");
-        res.json({
-            type: "failure",
-            result: `Can't Find the users`
-        });
-    }
-
-}
-const repostuser = async (req, res, next) => {
-    try {
-        new Reporteduser({
-            user: req.user,
-            message: req.body.message,
-            reporteduser: req.body.id
-        })
-            .save()
-            .then(e => {
-
-                return res.json({ type: "success", result: 'User Reported!' })
-            })
-            .catch(e => {
-                return res.json({ type: "failure", result: "Couldn't Report User" })
-
-            })
-    }
-    catch (e) {
-        console.log("error");
-        res.status(500).json({ type: "failure", result: "Couldn't Report User" })
-    }
-
-}
-const all = async (req, res, next) => {
-    try {
-        const { search } = req.query
-        const users = await User.find({
-            $and: [
-                { _id: { $ne: req.user } },
-                { $text: { $search: search, } }
-            ]
-        })
-        res.json({ type: "success", result: users })
-    }
-    catch (e) {
-        console.log(e);
-    }
-}
+};
 module.exports = {
-    all,
     register,
     registerWithImage,
     UpdatePorfile,
     signin,
-    getSingleUser,
-    getSingleUserbyAdmin,//admin
-    DELETEUSERByAdmin,
-    updateStatus,
-    VerifyEmail,
-    updatePass,
-    follow,
-    unfollow,
-    removefriend,
-    friendList,
-    acceptfriend,
-    pendinglist,
-    friendrequest,
-    DELETEUSER,
-    GetAll,
-    repostuser,
-    reporteduserslist
+    Verify,
+    OTP,
+    verifyOTP,
+    changePassword
 }

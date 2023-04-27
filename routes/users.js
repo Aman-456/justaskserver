@@ -8,74 +8,23 @@ const middleware = require("../middleware/authentication")
 router.post('/register', controllers.register);
 router.post(
     '/registerWithImage',
-    upload.single('file'),
+    upload.single('image'),
     controllers.registerWithImage
 );
 router.post(
     '/updateprofile',
     middleware.authenticator,
-    upload.single('file'),
+    upload.single('image'),
     controllers.UpdatePorfile
 );
-router.post(
-    '/signin',
-    controllers.signin
-);
-router.post('/getSingleUser',
-    middleware.authenticator,
-    controllers.getSingleUser
-);
-router.put('/updateStatus',
-    middleware.authenticator,
-    controllers.updateStatus
-);
-router.put('/VerifyEmail',
-    controllers.VerifyEmail
-);
-router.put('/updatePass',
-    controllers.updatePass
-);
+router.post('/signin', controllers.signin);
+router.get("/verify", controllers.Verify);
+router.post("/otpsend", controllers.OTP);
+router.post("/verifyotp", controllers.verifyOTP);
+router.post("/passwordchange", controllers.changePassword);
 
-router.put('/follow',
-    middleware.authenticator,
-    controllers.follow
-);
-router.put('/unfollow',
-    middleware.authenticator,
-    controllers.unfollow
-);
-router.delete('/removefriend',
-    middleware.authenticator,
-    controllers.removefriend
-);
-router.delete('/acceptfriend',
-    middleware.authenticator,
-    controllers.acceptfriend
-);
-router.post('/friendslist',
-    middleware.authenticator,
-    controllers.friendList
-);
-router.post('/pendinglist',
-    middleware.authenticator,
-    controllers.pendinglist
-);
-router.post('/requestlist',
-    middleware.authenticator,
-    controllers.friendrequest
-);
 
-router.delete('/delete',
-    middleware.authenticator,
-    controllers.DELETEUSER
-);
-router.post('/report',
-    middleware.authenticator,
-    controllers.repostuser
-);
 
-router.get('/all',
-    middleware.authenticator,
-    controllers.all
-);
+
+
 module.exports = router

@@ -44,6 +44,9 @@ const userSchema = new mongoose.Schema({
     bio: {
         type: String,
     },
+    verify: { default: false, type: Boolean },
+    otp: { type: Number },
+    expireTime: { type: String },
 },
     { timestamps: true }
 )

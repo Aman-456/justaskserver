@@ -10,7 +10,8 @@ const reportedusersSchema = new mongoose.Schema({
     },
     message: {
         type: String
-    }
+    },
+    completed: { default: false, type: Boolean }
 },
     { timestamps: true }
 )

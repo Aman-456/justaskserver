@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 let database = () => {
     try {
         mongoose
-            .connect(process.env.MONGO_URL_LOCAL, {
+            .connect(process.env.MONGO_URL, {
                 family: 4,
             })
             .then(() => console.log("DB Connection Successfull!"))

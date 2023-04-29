@@ -7,6 +7,7 @@ const bodyParser = require("body-parser")
 const userRoute = require("./routes/users");
 const postRoute = require("./routes/Posts");
 const searchRoute = require("./routes/search")
+const adminRoute = require("./routes/admin")
 
 
 database();               // database connection
@@ -49,6 +50,7 @@ app.use('/uploads', express.static('./uploads'));
 app.use("/api/user", userRoute);
 app.use('/api/post', postRoute);
 app.use('/api/search', searchRoute);
+app.use('/api/admin', adminRoute);
 
 
 

@@ -41,7 +41,7 @@ const PostSchema = new mongoose.Schema({
         default: false
     },
     Likes: {
-        count: Number,
+        count: { type: Number, default: 0 },
         liked: Array
     },
     Views: Number

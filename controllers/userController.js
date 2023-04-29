@@ -1,9 +1,11 @@
 const User = require('../modals/User')
+const ReportUser = require('../modals/ReportedUsers')
 const jwt = require('jsonwebtoken')
 const nodemailer = require("nodemailer")
 var fs = require("fs");
 const path = require("path")
 var handlebars = require("handlebars");
+const { default: mongoose } = require('mongoose');
 
 
 const register = async (req, res, next) => {
@@ -84,11 +86,18 @@ const registerWithImage = async (req, res, next) => {
 
 const UpdatePorfile = async (req, res, next) => {
     try {
+        const user = await User.findOne({ _id: req.user });
+        if (fs.existsSync(user.profile)) {
+            fs.unlinkSync(user.profile)
+        }
         const find = await User.findByIdAndUpdate(
             req.user,
             { $set: { profile: req.file.path } },
             { new: true }
         )
+            .populate("friends")
+            .populate("addfriendReq")
+            .populate("pendingReq")
         if (find) {
             res.json({
                 type: "success",
@@ -105,6 +114,22 @@ const UpdatePorfile = async (req, res, next) => {
     catch (e) {
         console.log(e);
         return res.json({ type: "failure", result: e.message })
+    }
+}
+const updateStatus = async (req, res, next) => {
+    try {
+        const _id = req.body.id
+        const user = await User.findOne({ _id });
+        !user && res.json({ type: "failure", result: "No user found" });
+        const update = await User.findByIdAndUpdate(_id, { $set: req.body }, { new: true })
+            .populate("friends")
+            .populate("addfriendReq")
+            .populate("pendingReq")
+        const { password, ...rest } = update._doc
+        res.json({ type: "success", result: { ...rest }, updated: "true" });
+    }
+    catch (e) {
+        console.log(e);
     }
 }
 // user signup verify
@@ -310,7 +335,328 @@ const changePassword = async (req, res) => {
             return;
         });
 };
+const DELETEUSER = async (req, res, next) => {
+    try {
+        const _id = req.user
+        console.log(req.user);
+        const user = await User.findByIdAndDelete(_id);
+        if (!user)
+            return res.json({ type: "failure", result: "No user found" });
+        // const { password, ...rest } = update
+        res.json({
+            type: "success", result: `Account has been deleted `
+        });
+    }
+    catch (e) {
+        console.log(e);
+        return res.json({ type: "failure", result: e.message });
+    }
+}
+const getSingleUser = async (req, res, next) => {
+    try {
+        const _id = req.body.id
+
+        var button = ""
+        const current = req.user
+        const user = await User.findById(_id)
+
+        if (!user) {
+            return res.json({ type: "failure", result: "No user found" });
+        }
+        const check = (arr) => {
+            let flag = false
+            arr.forEach(e => {
+                if (String(e) == String(current)) {
+                    return flag = true
+                }
+            })
+            return flag
+        }
+        if (check(user.friends)) {
+            button = "Remove"
+        }
+        else if (check(user.addfriendReq)) {
+            button = "Cancel"
+        }
+        else button = "Add"
+        const newuser = await User.findById(_id)
+            .populate("friends")
+            .populate("addfriendReq")
+            .populate("pendingReq")
+        const { password, ...rest } = newuser._doc
+        res.json({ type: "success", result: { ...rest }, button })
+    }
+    catch (e) {
+        console.log("error occured in getuser", e);
+        res.json({ type: "failure", result: "No user found" });
+    }
+}
+
+const follow = async (req, res, next) => {
+    if (req.body.usertofollowid !== req.body.id) {
+        try {
+            const usertofollowid = await User.findById(req.body.usertofollowid);
+            const currentUser = await User.findById(req.body.id);
+
+            if (!usertofollowid)
+                res.json({
+                    type: "failure",
+                    result: "No user found"
+                });
+
+            if (
+                !(usertofollowid.friends.includes(req.body.id)) &&
+                !(usertofollowid.addfriendReq.includes(req.body.id))
+            ) {
+                await usertofollowid.updateOne({
+                    $push: { addfriendReq: req.body.id }
+                }, { new: true })
+                await currentUser.updateOne({
+                    $push: { pendingReq: req.body.usertofollowid }
+                })
+                const user = await User.findById(req.body.usertofollowid)
+                    .populate("friends")
+                    .populate("addfriendReq")
+                    .populate("pendingReq")
+
+                res.json({
+                    type: "success", result: `Request Sent`, data: user
+                })
+            }
+            else res.json({
+                type: "failure", result:
+                    (usertofollowid.friends.includes(req.body.id))
+                        ? `You are already friend with this account`
+                        : `Request already sent to this account`
+
+
+            });
+        }
+        catch (e) {
+            res.json({
+                type: "failure", result: `Can't Find the user or can't follow the user or user not found`
+            });
+        }
+    }
+    else res.json({
+        type: "failure", result: `You can't follow your self`
+    });
+}
+const unfollow = async (req, res, next) => {
+    if (req.body.id !== req.body.usertounfollowid) {
+        try {
+            const unfollowid = await User.findById(req.body.usertounfollowid)
+
+
+            const currentUser = await User.findById(req.body.id);
+            if (!unfollowid)
+                return res.json({
+                    type: "failure",
+                    result: "No user found"
+                });
+            if (unfollowid.addfriendReq.includes(req.body.id)) {
+
+                await unfollowid.updateOne({
+                    $pull: { addfriendReq: req.body.id }
+                }, { new: true })
+                await currentUser.updateOne({
+                    $pull: { pendingReq: req.body.usertounfollowid }
+                })
+
+                const user = await User.findById(req.body.usertounfollowid)
+                    .populate("friends")
+                    .populate("addfriendReq")
+                    .populate("pendingReq")
+
+                res.json({
+                    type: "success", result: `Request Cancelled`, data: user
+                })
+            }
+            else res.json({
+                type: "failure", result: `You haven't send request to this account`
+            });
+        }
+        catch (e) {
+
+            res.json({
+                type: "failure", result: `Can't Find the user or can't unfollow the user or user not found`
+            });
+        }
+    }
+    else res.json({
+        type: "failure", result: `Server Error`
+    });
+}
+const removefriend = async (req, res, next) => {
+    if (req.body.id !== req.body.removeId) {
+        try {
+            const removeid = await User.findById(req.body.removeId);
+            const currentUser = await User.findById(req.body.id)
+                .populate("friends")
+                .populate("addfriendReq")
+                .populate("pendingReq")
+            if (!removeid)
+                res.json({
+                    type: "failure",
+                    result: "No user found"
+                });
+            if (removeid.friends.includes(req.body.id)) {
+                await removeid.updateOne({
+                    $pull: { friends: req.body.id }
+                }, { new: true })
+                await currentUser.updateOne({
+                    $pull: { friends: req.body.removeId }
+                }, { new: true })
+                const user = await User.findById(req.body.id)
+                    .populate("friends")
+                    .populate("addfriendReq")
+                    .populate("pendingReq")
+
+                res.json({
+                    type: "success", result: `Friend Removed`,
+                    data: user
+                })
+            }
+
+            else if (
+                removeid.pendingReq.includes(req.body.id) ||
+                currentUser.addfriendReq.includes(req.body.removeId)
+            ) {
+                console.log("fisrt2");
+
+                await removeid.updateOne({
+                    $pull: { pendingReq: req.body.id }
+                })
+                await currentUser.updateOne({
+                    $pull: { addfriendReq: req.body.removeId },
+                }, { new: true })
+                const user = await User.findById(req.body.id)
+                    .populate("friends")
+                    .populate("addfriendReq")
+                    .populate("pendingReq")
+                res.json({
+                    type: "success", result: `Friend Removed`
+                    , data: user
+
+                })
+            }
+            else if (removeid.addfriendReq.includes(req.body.id)) {
+                console.log("fisrt3");
+
+                await removeid.updateOne({
+                    $pull: { addfriendReq: req.body.id }
+                })
+                await currentUser.updateOne({
+                    $pull: { pendingReq: req.body.removeId }
+                })
+                const user = await User.findById(req.body.id)
+                    .populate("friends")
+                    .populate("addfriendReq")
+                    .populate("pendingReq")
+
+                res.json({
+                    type: "success", result: `Friend Removed`,
+                    data: user
+                })
+            }
+            else res.json({
+                type: "failure", result: `You aren't friends with this user`
+            });
+        }
+        catch (e) {
+            console.log(e.message);
+            res.json({
+                type: "failure", result: `Can't Find the user or can't unfollow the user or user not found`
+            });
+        }
+    }
+    else res.json({
+        type: "failure", result: `Server Error`
+    });
+}
+const reportuser = async (req, res, next) => {
+    const message = req.body.message;
+    const id = mongoose.Types.ObjectId(req.body.id);
+    const user = mongoose.Types.ObjectId(req.user);
+    if (id === user) {
+        return res.json({ type: "failure", result: "You can't report yourself!" })
+    }
+    try {
+        const by = user;
+        const reported = await User.findById(id);
+        if (!reported)
+            return res.json({
+                type: "failure",
+                result: "No user found"
+            });
+        const response = new ReportUser({ by, reported, message });
+        response.save().then(e => {
+            return res.json({ type: "success", result: "uesr reported" })
+        }).catch(e => {
+            return res.json({ type: "failure", result: "could not report user" })
+        })
+    }
+    catch (e) {
+        console.log(e.message);
+        return res.json({ type: "failure", result: "could not report user" })
+    }
+
+}
+const acceptfriend = async (req, res, next) => {
+    if (req.body.id !== req.body.acceptid) {
+        try {
+            const acceptid = await User.findById(req.body.acceptid);
+            const currentUser = await User.findById(req.body.id)
+                .populate("friends")
+                .populate("addfriendReq")
+                .populate("pendingReq")
+            if (!acceptid)
+                res.json({
+                    type: "failure",
+                    result: "No user found"
+                });
+            if (acceptid.pendingReq.includes(req.body.id)) {
+
+                await acceptid.updateOne({
+                    $pull: { pendingReq: req.body.id }
+                }, { new: true })
+                await acceptid.updateOne({
+                    $push: { friends: req.body.id }
+                }, { new: true })
+                await currentUser.updateOne({
+                    $pull: { addfriendReq: req.body.acceptid }
+                }, { new: true })
+                await currentUser.updateOne({
+                    $push: { friends: req.body.acceptid }
+                }, { new: true })
+                const user = await User.findById(req.body.id)
+                    .populate("friends")
+                    .populate("addfriendReq")
+                    .populate("pendingReq")
+
+                return res.json({
+                    type: "success", result: `Friend Request Accpeted`,
+                    data: user
+                })
+            }
+
+            else res.json({
+                type: "failure", result: `You aren't friends with this user`
+            });
+        }
+        catch (e) {
+
+            res.json({
+                type: "failure", result: `Can't Find the user or can't unfollow the user or user not found`
+            });
+        }
+    }
+    else res.json({
+        type: "failure", result: `Server Error`
+    });
+}
 module.exports = {
+    reportuser,
     register,
     registerWithImage,
     UpdatePorfile,
@@ -318,5 +664,16 @@ module.exports = {
     Verify,
     OTP,
     verifyOTP,
-    changePassword
+    changePassword,
+    updateStatus,
+    DELETEUSER,
+    getSingleUser,
+    removefriend,
+    follow,
+    unfollow,
+    acceptfriend
 }
+
+
+
+

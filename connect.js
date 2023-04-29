@@ -3,7 +3,9 @@ const mongoose = require("mongoose");
 let database = () => {
     try {
         mongoose
-            .connect(process.env.MONGO_URL, { useNewUrlParser: true })
+            .connect(process.env.MONGO_URL_LOCAL, {
+                family: 4,
+            })
             .then(() => console.log("DB Connection Successfull!"))
             .catch((err) => {
                 console.log(err);

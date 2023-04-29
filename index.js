@@ -3,9 +3,11 @@ const app = express();
 require("dotenv").config();
 const cors = require("cors");
 const database = require("./connect");
-const userRoute = require("./routes/users");
 const bodyParser = require("body-parser")
+const userRoute = require("./routes/users");
 const postRoute = require("./routes/Posts");
+const searchRoute = require("./routes/search")
+
 
 database();               // database connection
 const corsOptions = {
@@ -46,6 +48,8 @@ app.use(function (req, res, next) {
 app.use('/uploads', express.static('./uploads'));
 app.use("/api/user", userRoute);
 app.use('/api/post', postRoute);
+app.use('/api/search', searchRoute);
+
 
 
 // app.use(morgan('dev'));

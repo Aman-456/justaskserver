@@ -11,6 +11,10 @@ router.post(
     upload.single('image'),
     controllers.registerWithImage
 );
+router.put('/updateStatus',
+    middleware.authenticator,
+    controllers.updateStatus
+);
 router.post(
     '/updateprofile',
     middleware.authenticator,
@@ -23,8 +27,34 @@ router.post("/otpsend", controllers.OTP);
 router.post("/verifyotp", controllers.verifyOTP);
 router.post("/passwordchange", controllers.changePassword);
 
+router.post('/delete',
+    middleware.authenticator,
+    controllers.DELETEUSER
+);
+router.post('/getSingleUser',
+    middleware.authenticator,
+    controllers.getSingleUser
+);
+router.put('/follow',
+    middleware.authenticator,
+    controllers.follow
+);
+router.put('/unfollow',
+    middleware.authenticator,
+    controllers.unfollow
+);
 
+router.post('/reportuser',
+    middleware.authenticator,
+    controllers.reportuser
+);
 
-
-
+router.post('/removefriend',
+    middleware.authenticator,
+    controllers.removefriend
+);
+router.post('/acceptfriend',
+    middleware.authenticator,
+    controllers.acceptfriend
+);
 module.exports = router

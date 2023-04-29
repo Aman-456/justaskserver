@@ -1,6 +1,7 @@
 const Posts = require("../modals/Posts")
 const User = require("../modals/User")
 const Saved = require("../modals/SavedPosts")
+const { default: mongoose } = require("mongoose")
 
 const CreatePost = async (req, res, next) => {
     try {
@@ -98,6 +99,7 @@ const GetSinglePost = async (req, res, next) => {
 
         if (post) {
             const saved = await Saved.findOne({ Author: req.user, Post: req.body.id })
+
             return res.json({ type: "success", result: { ...post?._doc, saved: saved ? true : false } })
         }
     }
@@ -562,8 +564,61 @@ const RemoveFromSaved = async (req, res, next) => {
         console.log(e);
     }
 }
+const GetRecent = async (req, res, next) => {
+    try {
+        const post = await Posts.find({}, { _id: 1, Title: 1 }).sort({ $natural: -1 }).limit(7)
+        if (post) {
+            return res.json({ type: "success", result: post })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
+const GetMyTopics = async (req, res, next) => {
+    try {
+        const p = await Posts.find({ Author: req.user }).sort({ $natural: -1 }).populate("Author")
+        if (p) {
+            return res.json({ type: "success", result: p })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
+const GetMySavedPosts = async (req, res, next) => {
+    try {
+        var id = mongoose.Types.ObjectId(req.user);
+        const posts = await Saved.find({ Author: id })
+            .sort({ $natural: -1 })
+            .populate('Post')
+            .populate("Post Author")
+            .populate({ path: "Post", populate: "Author" })
 
+        const newposts = posts.map(e => e.Post)
+        if (posts) {
+            return res.json({ type: "success", result: newposts })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
+const GetOthersTopics = async (req, res, next) => {
+    try {
+        const p = await Posts.find({ Author: req.body.id }).sort({ $natural: -1 }).populate("Author")
+        if (p) {
+            return res.json({ type: "success", result: p })
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+}
 module.exports = {
+    GetMySavedPosts,
+    GetMyTopics,
+    GetRecent,
     CreatePost,
     GetSinglePost,
     GetMyAnswers,
@@ -581,5 +636,6 @@ module.exports = {
     EditPost,
     DeletePost,
     AddtoSavedPosts,
-    RemoveFromSaved
+    RemoveFromSaved,
+    GetOthersTopics,
 }

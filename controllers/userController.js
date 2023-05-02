@@ -12,6 +12,7 @@ const register = async (req, res, next) => {
     try {
         const { name, email, password } = req.body
         const checkuser = await User.findOne({ email: email })
+        if (!password) return res.json({ type: "failure", result: "enter password correctly" })
         checkuser && res.json({
             type: "failure",
             result: "Email already exist"
@@ -21,7 +22,6 @@ const register = async (req, res, next) => {
             name,
             email,
             password,
-            profile: ""
         })
         sendEmail(user.email, user.name, user, res);
     }
@@ -65,6 +65,8 @@ const signin = async (req, res, next) => {
 const registerWithImage = async (req, res, next) => {
     try {
         const email = req.body.email
+        if (!req.body?.password) return res.json({ type: "failure", result: "enter password correctly" })
+
         const find = await User.findOne({ email })
         if (find) return res.json({
             type: "failure",

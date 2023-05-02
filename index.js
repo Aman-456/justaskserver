@@ -8,8 +8,6 @@ const userRoute = require("./routes/users");
 const postRoute = require("./routes/Posts");
 const searchRoute = require("./routes/search")
 const adminRoute = require("./routes/admin")
-
-
 database();               // database connection
 const corsOptions = {
     origin: '*',
@@ -17,10 +15,7 @@ const corsOptions = {
     optionSuccessStatus: 200,
 }
 
-
 app.use(cors(corsOptions)) // Use this after the variable declaration
-
-
 app.use(bodyParser.json({
     limit: '50mb'
 }));
@@ -55,8 +50,6 @@ app.use('/api/admin', adminRoute);
 
 
 // app.use(morgan('dev'));
-
-
 
 
 const PORT = process.env.PORT;

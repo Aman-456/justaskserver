@@ -5,6 +5,7 @@ const nodemailer = require("nodemailer")
 var fs = require("fs");
 const path = require("path")
 var handlebars = require("handlebars");
+const bcrypt = require("bcrypt")
 const { default: mongoose } = require('mongoose');
 
 
@@ -18,10 +19,12 @@ const register = async (req, res, next) => {
             result: "Email already exist"
         });
 
+        const salt = await bcrypt.genSalt(10)
+        const hashed = await bcrypt.hash(password, salt)
         const user = new User({
             name,
             email,
-            password,
+            password: hashed
         })
         sendEmail(user.email, user.name, user, res);
     }
@@ -72,13 +75,17 @@ const registerWithImage = async (req, res, next) => {
             type: "failure",
             result: "Email already exist"
         });
+
+
+        const salt = await bcrypt.genSalt(10)
+        const hashed = await bcrypt.hash(req.body.password, salt)
         const user = new User({
             name: req.body.name,
             email: req.body.email,
-            password: req.body.password,
+            password: hashed,
             profile: req.body.file
         })
-        sendEmail(user.email, user.name, user, res);
+        sendEmail(user.email, user.name, user, res, req);
     }
     catch (e) {
         console.log(e);
@@ -182,7 +189,8 @@ async function sendEmail(email, name, user, res) {
                         res.status(500).json({ type: "failure", result: "Server Not Responding" });
                         return;
                     } else {
-                        await user.save().then(e => {
+
+                        await user.save().then(async () => {
                             return res.status(200).json({
                                 type: "success",
                                 result: "Please verify your email!",
@@ -321,7 +329,9 @@ const verifyOTP = async (req, res) => {
 
 const changePassword = async (req, res) => {
     const user = await User.findOne({ email: req.body.email });
-    user.password = req.body.password;
+    const salt = await bcrypt.genSalt(10)
+    const hashed = await bcrypt.hash(password, salt)
+    user.password = hashed;
     user
         .save()
         .then(() => {
